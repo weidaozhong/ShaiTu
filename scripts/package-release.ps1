@@ -42,6 +42,7 @@ try {
         $taskWriter.WriteLine('The Windows Snipping Tool must be available and copy the image to the clipboard. Esc cancels; the request expires after 2 minutes.')
         $taskWriter.WriteLine('Default show/hide shortcut: Ctrl + Alt + T; customize it in the tray menu.')
         $taskWriter.WriteLine('Snipaste desktop pins remain available for dragging and comparison.')
+        $taskWriter.WriteLine('New photos enter from the left. At eight photos, the current rightmost photo is removed when another arrives.')
         $taskWriter.WriteLine('Dropping a photo outside the clothesline removes its ShaiTu cache. Tray exit clears ShaiTu screenshots.')
         $taskWriter.WriteLine('Snipaste originals and explicitly saved images remain untouched.')
         $taskWriter.WriteLine('Optional startup: enable it in the tray menu; the app opens 15 seconds after Windows logon.')

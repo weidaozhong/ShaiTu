@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing version tag, e.g. v0.5.8'
+        description: 'Existing version tag, e.g. v0.5.9'
         required: true
         type: string
 
@@ -95,6 +95,7 @@ jobs:
             '',
             'Requirements: Windows 10 / 11 and .NET Framework 4.8. Automatic pin reception requires Snipaste.',
             'Snipaste is optional: if it is not running, the tray capture command opens Windows screen snipping and receives one result.',
+            'New photos enter from the left; overflow removes the current rightmost photo and its ShaiTu cache.',
             'Snipaste desktop pins coexist with the clothesline. Removing or clearing photos only clears ShaiTu caches.',
             'Default show/hide shortcut: Ctrl + Alt + T, customizable in the tray.',
             'Optional logon startup uses a Startup-folder shortcut with a 15-second delay.',

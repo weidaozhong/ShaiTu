@@ -102,26 +102,41 @@ namespace ShaiTu {
                 Check(!pixelStore.ImportImage(pixel24), "Equivalent Snipaste/clipboard pixels deduplicate across bitmap formats and DPI");
                 string original = Path.Combine(sandbox, "original.png"); WritePng(samples[1], original);
                 Check(store.ImportFile(original), "File import");
-                Photo p = store.Items.Last(); var data = LineWindow.DragData(p);
+                Photo p = store.Items.First(); var data = LineWindow.DragData(p);
                 Check(data.ContainsFileDropList() && data.GetFileDropList()[0] == p.File && data.ContainsImage(), "Drag payload contains file and full bitmap");
                 var loaded = new Store(store.Root);
-                Check(loaded.Items.Count == 2 && loaded.Items[1].Width == 600, "Snapshots restored after restart");
+                Check(loaded.Items.Count == 2 && loaded.Items[0].Width == 600, "Snapshots restored after restart");
+                Check(loaded.Items[0].Hash == Store.ImageHash(samples[1]) && loaded.Items[1].Hash == Store.ImageHash(samples[0]),
+                    "New photos enter at the left and push earlier photos right; the order survives restart");
                 Photo left = loaded.Items[0], right = loaded.Items[1];
                 Check(loaded.Swap(left, right) && loaded.Items[0] == right && loaded.Items[1] == left, "Drag reorder swaps two positions");
                 Check(Path.GetFileName(new Store(loaded.Root).Items[0].File) == Path.GetFileName(right.File), "Swapped order persists across restart");
                 Check(!loaded.Swap(right, right), "Dropping a photo onto itself changes nothing");
                 loaded.Swap(right, left);
-                loaded.Remove(loaded.Items.Last());
+                loaded.Remove(loaded.Items.First());
                 Check(File.Exists(original) && !File.Exists(p.File) && new Store(store.Root).Items.Count == 1, "Removing snapshot preserves original and persists");
                 loaded.Clear();
-                for (int i = 0; i < 10; i++) loaded.ImportImage(DrawSample(i + 3));
-                Check(loaded.Items.Count == 8 && Directory.GetFiles(loaded.Cache, "*.png").Length == 8, "Capacity evicts oldest snapshots and bounds disk cache");
+                var capacityPhotos = new List<Photo>();
+                for (int i = 0; i < 10; i++) { loaded.ImportImage(DrawSample(i + 3)); capacityPhotos.Add(loaded.Items[0]); }
+                Check(loaded.Items.Count == 8 && Directory.GetFiles(loaded.Cache, "*.png").Length == 8
+                    && loaded.Items.SequenceEqual(capacityPhotos.Skip(2).Reverse())
+                    && !File.Exists(capacityPhotos[0].File) && !File.Exists(capacityPhotos[1].File)
+                    && capacityPhotos.Skip(2).All(photo => File.Exists(photo.File))
+                    && new Store(loaded.Root).Items.Select(photo => photo.File).SequenceEqual(loaded.Items.Select(photo => photo.File)),
+                    "Overflow deletes the rightmost oldest photos, retains eight newest in reverse arrival order and persists that order");
+                Photo reorderedRight = loaded.Items[0], retainedOldest = loaded.Items.Last();
+                loaded.Swap(reorderedRight, retainedOldest); loaded.ImportImage(DrawSample(97));
+                Check(!File.Exists(reorderedRight.File) && File.Exists(retainedOldest.File) && loaded.Items[1] == retainedOldest
+                    && loaded.Items.Count == 8 && Directory.GetFiles(loaded.Cache, "*.png").Length == 8,
+                    "After a manual swap, overflow deletes the current rightmost photo and preserves the chosen left-side photo");
                 string first = loaded.Items[0].File;
                 using (var lockFile = new FileStream(Path.Combine(loaded.Root, "settings.json"), FileMode.Open, FileAccess.Read, FileShare.None)) {
                     bool failed = false; try { loaded.Remove(loaded.Items[0]); } catch (IOException) { failed = true; }
                     Check(failed && loaded.Items.Count == 8 && File.Exists(first), "Failed persistence rolls back removal");
+                    var importBefore = loaded.Items.ToArray();
                     failed = false; try { loaded.ImportImage(DrawSample(98)); } catch (IOException) { failed = true; }
-                    Check(failed && loaded.Items.Count == 8 && Directory.GetFiles(loaded.Cache, "*.png").Length == 8, "Failed persistence rolls back import and removes orphan");
+                    Check(failed && loaded.Items.SequenceEqual(importBefore) && importBefore.All(photo => File.Exists(photo.File))
+                        && Directory.GetFiles(loaded.Cache, "*.png").Length == 8, "Failed persistence restores order and the rightmost photo while removing the new orphan");
                 }
                 Check(!Store.IsOwnedName("..\\test.png") && !Store.IsOwnedName("photo.png") && Store.IsOwnedName(Guid.NewGuid().ToString("N") + ".png"), "Only owned GUID filenames are eligible for cleanup");
                 using (var lockFile = new FileStream(Path.Combine(loaded.Root, "settings.json"), FileMode.Open, FileAccess.Read, FileShare.None)) {

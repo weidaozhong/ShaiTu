@@ -111,8 +111,8 @@ namespace ShaiTu {
             try {
                 File.WriteAllBytes(path, bytes);
                 Photo photo = LoadPhoto(path); photo.Hash = hash;
-                Items.Add(photo);
-                while (Items.Count > Capacity) Items.RemoveAt(0);
+                Items.Insert(0, photo);
+                while (Items.Count > Capacity) Items.RemoveAt(Items.Count - 1);
                 Save();
             } catch {
                 Items.Clear(); Items.AddRange(previous); TryDelete(path); throw;
