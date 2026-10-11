@@ -22,6 +22,7 @@ namespace ShaiTu {
         SnipasteBridge snipaste;
         readonly PointerDismissal dismissal = new PointerDismissal();
         readonly DisplaySession display = new DisplaySession();
+        readonly WindowsCaptureSession windowsCapture = new WindowsCaptureSession();
         Forms.NotifyIcon tray;
         Forms.ContextMenuStrip menu;
         DispatcherTimer timer;
@@ -67,7 +68,7 @@ namespace ShaiTu {
             watcher = new IncomingWatcher(app.Dispatcher, delegate(string file) { if (store.ImportFile(file, "监听文件夹")) NewPhoto(); }, Error);
             ConfigureWatcher();
             new WindowInteropHelper(line).EnsureHandle();
-            line.ClipboardUpdated += delegate { if (store.Settings.ClipboardEnabled) { clipboardPending = true; clipboardAttempts = 0; } };
+            line.ClipboardUpdated += delegate { if (store.Settings.ClipboardEnabled || windowsCapture.Active) { clipboardPending = true; clipboardAttempts = 0; } };
             line.ToggleRequested += Toggle;
             snipaste = new SnipasteBridge(delegate(System.Windows.Media.Imaging.BitmapSource image) {
                 if (store.ImportImage(image, "Snipaste:" + Path.GetFileName(snipaste.CurrentFile))) NewPhoto();
@@ -158,6 +159,14 @@ namespace ShaiTu {
         }
         void Tick(object sender, EventArgs args) {
             if (closing) return;
+            if (windowsCapture.Active) {
+                if (windowsCapture.Expire(DateTime.Now) || WindowsSnipCommands.EscapeDown) {
+                    windowsCapture.Cancel(); clipboardPending = false; RestoreAfterCapture();
+                } else {
+                    line.Tuck(false); edgeHandle.Sync(false, null, line.Handle);
+                    if (Native.GetClipboardSequenceNumber() != clipboardSequence) clipboardPending = true;
+                }
+            }
             if (line.Busy || line.Dragging) { dismissal.Reset(); return; }
             watcher.Tick();
             if (store.Settings.SnipasteEnabled) {
@@ -167,7 +176,8 @@ namespace ShaiTu {
                 }
                 snipaste.Tick();
             }
-            if (clipboardPending && store.Settings.ClipboardEnabled) ReadClipboard();
+            if (clipboardPending && (store.Settings.ClipboardEnabled || windowsCapture.Active)) ReadClipboard();
+            if (windowsCapture.Active) { dismissal.Reset(); return; }
             if (++ticks % 10 == 0) { try { store.Refresh(); } catch (Exception ex) { Error(ex); } }
             if (store.Items.Count == 0) { line.Tuck(false); edgeHandle.Sync(false, null, line.Handle); dismissal.Reset(); return; }
             var pos = Forms.Cursor.Position; var screen = Forms.Screen.FromPoint(pos);
@@ -191,9 +201,16 @@ namespace ShaiTu {
             uint sequence = Native.GetClipboardSequenceNumber();
             if (sequence == clipboardSequence || sequence == line.OwnClipboardSequence) { clipboardPending = false; clipboardSequence = sequence; return; }
             try {
+                string owner = Native.ClipboardOwnerName();
+                if (windowsCapture.TryReceive(DateTime.Now, sequence, line.OwnClipboardSequence, owner,
+                    delegate { return Clipboard.ContainsImage() ? Clipboard.GetImage() : null; },
+                    delegate(System.Windows.Media.Imaging.BitmapSource image) { store.ImportImage(image, "Windows 截图"); })) {
+                    clipboardPending = false; clipboardSequence = sequence; NewPhoto(); return;
+                }
+                if (windowsCapture.Active || !store.Settings.ClipboardEnabled) { clipboardPending = false; clipboardSequence = sequence; return; }
                 // A Snipaste copy action is not a pin request, even when optional clipboard
                 // reception is enabled for other applications.
-                if (String.Equals(Native.ClipboardOwnerName(), "Snipaste", StringComparison.OrdinalIgnoreCase)) {
+                if (String.Equals(owner, "Snipaste", StringComparison.OrdinalIgnoreCase)) {
                     clipboardPending = false; clipboardSequence = sequence; return;
                 }
                 if (Clipboard.ContainsData("ShaiTu.Source")) { clipboardPending = false; clipboardSequence = sequence; return; }
@@ -203,17 +220,31 @@ namespace ShaiTu {
                 }
                 clipboardPending = false; clipboardSequence = sequence;
             } catch (System.Runtime.InteropServices.COMException ex) {
-                if (++clipboardAttempts >= 10) { clipboardPending = false; Error(ex); }
-            } catch (Exception ex) { clipboardPending = false; clipboardSequence = sequence; Error(ex); }
+                if (++clipboardAttempts >= 10) { clipboardPending = false; windowsCapture.Cancel(); RestoreAfterCapture(); Error(ex); }
+            } catch (Exception ex) { clipboardPending = false; clipboardSequence = sequence; windowsCapture.Cancel(); RestoreAfterCapture(); Error(ex); }
         }
         void ConfigureWatcher() {
             watcher.Configure(String.IsNullOrWhiteSpace(store.Settings.WatchFolder) ? new string[0] : new[] { store.Settings.WatchFolder });
         }
         void Capture() {
             // Temporarily hide for the snip without losing a manually held session.
+            windowsCapture.Cancel(); clipboardPending = false;
             dismissal.Reset(); edgeHandle.Sync(false, null, line.Handle); line.Tuck(false);
-            try { SnipasteCommands.Execute("snip"); }
-            catch (Exception ex) { Error(ex); }
+            // Let the tray menu close and the hidden overlay repaint before Windows takes the screen.
+            var launch = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            launch.Tick += delegate {
+                launch.Stop(); if (closing) return;
+                try {
+                    if (SnipasteCommands.RunningExecutable() != null) SnipasteCommands.Execute("snip");
+                    else {
+                        clipboardSequence = Native.GetClipboardSequenceNumber(); clipboardAttempts = 0;
+                        windowsCapture.Start(DateTime.Now, clipboardSequence, WindowsSnipCommands.Execute);
+                    }
+                } catch (Exception ex) { windowsCapture.Cancel(); RestoreAfterCapture(); Error(ex); }
+            }; launch.Start();
+        }
+        void RestoreAfterCapture() {
+            if (store.Items.Count > 0 && (display.ManualHeld || line.Pinned)) line.Reveal(Forms.Screen.FromPoint(Forms.Cursor.Position), true);
         }
         void Import() {
             line.Busy = true;
@@ -232,7 +263,9 @@ namespace ShaiTu {
             menu = new Forms.ContextMenuStrip();
             menu.Items.Add(Item("展开 / 收起    " + HotkeyBinding.Label(store.Settings.HotkeyModifiers, store.Settings.HotkeyKey), Toggle));
             menu.Items.Add(Item("设置展开 / 收起快捷键…", ConfigureHotkey));
-            menu.Items.Add(Item("Snipaste 截图    " + SnipasteCommands.HotkeyLabel(), Capture)); menu.Items.Add(Item("添加图片…", Import));
+            var capture = Item("截图", Capture); menu.Items.Add(capture); menu.Items.Add(Item("添加图片…", Import));
+            menu.Opening += delegate { capture.Text = SnipasteCommands.RunningExecutable() != null
+                ? "Snipaste 截图    " + SnipasteCommands.HotkeyLabel() : "Windows 截图    Win + Shift + S"; };
             menu.Items.Add(new Forms.ToolStripSeparator());
             var autoHide = Item("自动隐藏（默认开启）", delegate { line.Pinned = !line.Pinned; });
             autoHide.Checked = store.Settings.AutoHide; menu.Items.Add(autoHide);
@@ -298,7 +331,7 @@ namespace ShaiTu {
             menu.Items.Add(Item("打开缓存文件夹", delegate { Process.Start("explorer.exe", "\"" + store.Cache + "\""); }));
             menu.Items.Add(Item("使用说明", delegate {
                 line.Busy = true;
-                try { MessageBox.Show("使用 Snipaste 原快捷键截图，选择钉在桌面后才上晾衣绳。\n直接复制不上绳；编辑后钉图只接收最终版本。\n\n左键复制，右键查看。\nShift + 右键打开更多操作，可另存需要保留的图片。\n拖到另一张图上交换位置，拖绳调整高度。\n\n右侧小把手停留 0.3 秒或单击即可展开。\n鼠标留在挂绳区保持显示，离开 1.2 秒收起。\n钉图成功后展开确认，快捷键展开后保持显示。\n没有图片时，绳子和小把手都隐藏。\nSnipaste 桌面贴图可自由拖动对比。\n拖出绳外松手、清空或退出只清理晒图缓存。\nSnipaste 贴图及原文件由 Snipaste 管理。", "晒图使用说明"); }
+                try { MessageBox.Show("使用 Snipaste 原快捷键截图，选择钉在桌面后才上晾衣绳。\n直接复制不上绳；编辑后钉图只接收最终版本。\n没有运行 Snipaste 时，托盘可使用 Windows 截图。\n系统截图需复制到剪贴板；Esc 取消，2 分钟后停止本次接收。\n\n左键复制，右键查看。\nShift + 右键打开更多操作，可另存需要保留的图片。\n拖到另一张图上交换位置，拖绳调整高度。\n\n右侧小把手停留 0.3 秒或单击即可展开。\n鼠标留在挂绳区保持显示，离开 1.2 秒收起。\n钉图成功后展开确认，快捷键展开后保持显示。\n没有图片时，绳子和小把手都隐藏。\nSnipaste 桌面贴图可自由拖动对比。\n拖出绳外松手、清空或退出只清理晒图缓存。\nSnipaste 贴图及原文件由 Snipaste 管理。", "晒图使用说明"); }
                 finally { line.Busy = false; }
             }));
             menu.Items.Add(Item("关于晒图", delegate {

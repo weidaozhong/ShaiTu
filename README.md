@@ -4,7 +4,7 @@
 
 # 晒图 · ShaiTu
 
-把 Snipaste 钉图挂到桌面的晾衣绳上，随手复制、查看和拖动排序。Snipaste 的桌面贴图同时保留，方便自由拖动做对比。
+把截图挂到桌面的晾衣绳上，随手复制、查看和拖动排序。支持 Snipaste 钉图联动，也可使用 Windows 截图。Snipaste 的桌面贴图同时保留，方便自由拖动做对比。
 
 **Windows 10 / 11 · .NET Framework 4.8 · 当前版本 0.5.8**
 
@@ -19,6 +19,8 @@
 3. 完成截图或编辑后，选择**钉在桌面**。图片会复制到晾衣绳，保存成功后展开确认至少 5 秒。
 
 直接在 Snipaste 中复制图片不会自动上绳；先编辑再钉图，只接收编辑后的最终版本。托盘里的“Snipaste 截图”也调用 Snipaste。
+
+**没有 Snipaste：** 托盘中点击“Windows 截图”，选取区域后自动挂上绳并展开确认。此入口调用系统的 **Win + Shift + S**，无需开启长期剪贴板监听；仅接收本次 Windows 截图工具生成的图片。按 Esc 取消，未完成的接收在 2 分钟后结束。需要 Windows 自带的截图工具可用，且启用自动复制到剪贴板；关闭了自动复制时，在截图工具中点击复制即可接收。
 
 ## 图片怎么用
 
@@ -68,6 +70,16 @@ Snipaste 桌面贴图可继续自由拖动、缩放和对比；晾衣绳保存�
 
 自动接收依赖 Snipaste 写出的贴图 PNG 文件。程序只读取最终贴图，不导入 `.sp1` 截图历史，也不会关闭或隐藏 Snipaste 贴图。
 
+## 换一台电脑使用
+
+便携包不包含原电脑的个人设置、Snipaste 配置和截图缓存。新电脑首次运行使用默认设置；Snipaste 的截图快捷键由那台电脑的 Snipaste 自己管理，晒图只读取并显示，不修改它。
+
+启动 Snipaste 后，晒图会从正在运行的程序位置和常见用户目录自动检测 `history`。特殊安装位置或自定义数据目录检测失败时，在托盘中选择 Snipaste 安装目录或 `history`，也可恢复自动检测。
+
+没有 Snipaste 或尚未启动它时，托盘截图入口自动切为“Windows 截图”。Snipaste 启动后，再次打开托盘菜单会切回 Snipaste，使用当地设置好的截图键，不修改配置。
+
+还可通过“添加图片”导入文件，开启“接收剪贴板图片”接收其他应用复制的图片，或配置监听文件夹。复制、预览、排序、另存、自启动和缓存清理均不依赖 Snipaste。Windows 截图后备入口使用系统组件；如果该组件被卸载或快捷键被其他工具替换，可继续手动添加图片。
+
 <details>
 <summary><strong>缓存位置与自启动细节</strong></summary>
 
@@ -91,6 +103,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 加 `-Test` 可运行自动检查。
 
-`scripts/package-release.ps1 -Version 0.5.8` 将构建结果打包为便携版 ZIP，并生成 SHA256 校验文件。推送 `v*` 标签会触发 [Windows 构建及发布](https://github.com/weidaozhong/ShaiTu/actions)，也可用现有标签手动触发。
+`.\scripts\package-release.ps1 -Version 0.5.8` 将构建结果打包为便携版 ZIP，并生成 SHA256 校验文件。推送 `v*` 标签会触发 [Windows 构建及发布](https://github.com/weidaozhong/ShaiTu/actions)，也可用现有标签手动触发。
 
-[查看验证记录](./src/VALIDATION.md)：当前 89 项自动检查及原生启动检查连续通过 3 次。真实启动快捷方式已验证；下一次 Windows 登录触发、实际跨应用拖放与多屏混合 DPI 仍需使用验证。
+[查看验证记录](./src/VALIDATION.md)：当前 101 项自动检查及原生启动检查。真实启动快捷方式已验证；下一次 Windows 登录触发、Windows 截图交互、实际跨应用拖放与多屏混合 DPI 仍需使用验证。

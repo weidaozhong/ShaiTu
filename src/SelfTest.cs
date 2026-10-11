@@ -49,6 +49,49 @@ namespace ShaiTu {
                 migrated.Settings.ClipboardEnabled = true; migrated.Save();
                 Check(new Store(legacy).Settings.ClipboardEnabled, "Explicitly enabling clipboard reception after migration survives restart");
                 var samples = new[] { DrawSample(0), DrawSample(1), DrawSample(2) };
+                var fallback = new WindowsCaptureSession(); var fallbackStore = new Store(Path.Combine(sandbox, "windows-capture"));
+                DateTime captureTime = DateTime.UtcNow; int launches = 0, reads = 0;
+                Func<BitmapSource> readFallback = delegate { reads++; return samples[0]; };
+                Action<BitmapSource> saveFallback = delegate(BitmapSource image) { fallbackStore.ImportImage(image, "Windows 截图"); };
+                Check(!fallback.TryReceive(captureTime, 41, 99, "SnippingTool", readFallback, saveFallback) && reads == 0,
+                    "Windows screenshots are not received without an explicit fallback request");
+                fallback.Start(captureTime, 40, delegate { launches++; });
+                Check(launches == 1 && fallback.Active && !fallback.TryReceive(captureTime, 40, 99, "SnippingTool", readFallback, saveFallback),
+                    "Fallback launch arms one request but ignores the image already on the clipboard");
+                Check(!fallback.TryReceive(captureTime, 99, 99, "SnippingTool", readFallback, saveFallback),
+                    "Fallback ignores photos copied by ShaiTu itself");
+                Check(!fallback.TryReceive(captureTime, 41, 99, "Snipaste", readFallback, saveFallback)
+                    && !fallback.TryReceive(captureTime, 41, 99, "chrome", readFallback, saveFallback)
+                    && !fallback.TryReceive(captureTime, 41, 99, "unknown", readFallback, saveFallback) && reads == 0,
+                    "Fallback excludes Snipaste copies and unrelated clipboard owners");
+                Check(!fallback.TryReceive(captureTime, 41, 99, "ScreenClippingHost", delegate { return null; }, saveFallback) && fallback.Active,
+                    "Text or incomplete clipboard data does not consume the screenshot request");
+                bool fallbackFailed = false;
+                fallbackStore.Save();
+                using (var lockFile = new FileStream(Path.Combine(fallbackStore.Root, "settings.json"), FileMode.Open, FileAccess.Read, FileShare.None)) {
+                    try { fallback.TryReceive(captureTime, 41, 99, "SnippingTool", readFallback, saveFallback); }
+                    catch (IOException) { fallbackFailed = true; }
+                }
+                Check(fallbackFailed && fallback.Active && fallbackStore.Items.Count == 0,
+                    "Failed Windows screenshot persistence leaves the request retryable and no orphan photo");
+                Check(fallback.TryReceive(captureTime, 41, 99, "snippingtool", readFallback, saveFallback)
+                    && !fallback.Active && fallbackStore.Items.Count == 1 && !fallbackStore.Settings.ClipboardEnabled,
+                    "A Windows screenshot saves once without enabling permanent clipboard reception");
+                Check(!fallback.TryReceive(captureTime, 42, 99, "SnippingTool", readFallback, saveFallback) && fallbackStore.Items.Count == 1,
+                    "Later Windows clipboard updates cannot append a second screenshot to the completed request");
+                fallback.Start(captureTime, 42, delegate { }); fallback.Cancel();
+                Check(!fallback.TryReceive(captureTime, 43, 99, "ScreenClippingHost", readFallback, saveFallback),
+                    "Cancelling a Windows screenshot prevents a late result from being imported");
+                fallback.Start(captureTime, 43, delegate { });
+                Check(!fallback.Expire(captureTime.AddSeconds(119)) && fallback.Expire(captureTime.AddMinutes(2)) && !fallback.Active
+                    && !fallback.TryReceive(captureTime.AddMinutes(2), 44, 99, "SnippingTool", readFallback, saveFallback),
+                    "Abandoned fallback requests expire after two minutes and reject late clipboard images");
+                bool launchFailed = false;
+                try { fallback.Start(captureTime, 44, delegate { throw new InvalidOperationException("test launch failure"); }); }
+                catch (InvalidOperationException) { launchFailed = true; }
+                Check(launchFailed && !fallback.Active, "A failed Windows screenshot launch never leaves clipboard reception armed");
+                Check(WindowsSnipCommands.NativeInputSize == (IntPtr.Size == 8 ? 40 : 28),
+                    "Windows screenshot input has the correct native layout for the current process architecture");
                 Check(store.ImportImage(samples[0]), "Import clipboard bitmap into private snapshot");
                 Check(File.ReadAllText(Path.Combine(store.Root, "captures.log")).Contains("600x") && File.ReadAllText(Path.Combine(store.Root, "captures.log")).Contains(Path.GetFileName(store.Items[0].File)), "Capture audit connects image dimensions and reception source to the owned snapshot");
                 Check(!store.ImportImage(samples[0]) && store.Items.Count == 1, "Duplicate bitmap does not add another item");
