@@ -1,0 +1,107 @@
+name: Windows Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Existing version tag, e.g. v0.5.8'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: powershell
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set and validate version
+        id: version
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $sourcePath = Join-Path $PWD 'src\Program.cs'
+          $source = [IO.File]::ReadAllText($sourcePath)
+          $match = [regex]::Match($source, 'AssemblyVersion\("(\d+\.\d+\.\d+)\.0"\)')
+          if (!$match.Success) { throw 'Source assembly version not found.' }
+          $version = $match.Groups[1].Value
+          $publishing = $env:GITHUB_REF.StartsWith('refs/tags/') -or $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch'
+          if ($publishing) {
+            if ($env:RELEASE_TAG -notmatch '^v(\d+\.\d+\.\d+)$') { throw 'Use a vMAJOR.MINOR.PATCH tag.' }
+            $version = $Matches[1]
+            git show-ref --verify --quiet ('refs/tags/' + $env:RELEASE_TAG)
+            if ($LASTEXITCODE -ne 0) { throw 'The release tag must already exist.' }
+            $source = $source.Replace($match.Groups[1].Value, $version)
+            [IO.File]::WriteAllText($sourcePath, $source, [Text.UTF8Encoding]::new($false))
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "publish=$($publishing.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build and self-test
+        run: .\build.ps1 -Test
+
+      - name: Native startup smoke test
+        run: |
+          $output = Join-Path $PWD 'artifacts\native-smoke'
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          $proc = Start-Process -FilePath (Join-Path $PWD 'dist\ShaiTu.exe') -ArgumentList @('--smoke-test', ('"' + $output + '"')) -WindowStyle Hidden -PassThru
+          if (!$proc.WaitForExit(30000)) { throw 'Native smoke test timed out.' }
+          Get-Content -LiteralPath (Join-Path $output 'native-smoke-results.txt')
+          if ($proc.ExitCode -ne 0) { throw 'Native smoke test failed.' }
+
+      - name: Package portable ZIP and SHA256
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: .\scripts\package-release.ps1 -Version $env:VERSION
+
+      - name: Save package and verification records
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ShaiTu-Windows-${{ steps.version.outputs.version }}
+          path: |
+            release/*.zip
+            release/SHA256SUMS.txt
+            artifacts/test-results.txt
+            artifacts/native-smoke/native-smoke-results.txt
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $notes = @(
+            'Portable Windows build. Extract the ZIP and run ShaiTu.exe; keep its config file beside it.',
+            '',
+            'Requirements: Windows 10 / 11 and .NET Framework 4.8. Automatic pin reception requires Snipaste.',
+            'Snipaste desktop pins coexist with the clothesline. Removing or clearing photos only clears ShaiTu caches.',
+            'Default show/hide shortcut: Ctrl + Alt + T, customizable in the tray.',
+            'Optional logon startup uses a Startup-folder shortcut with a 15-second delay.',
+            '',
+            'The self-test and native startup smoke test passed on the Windows runner.',
+            'See README for the Chinese usage guide and the tested interaction boundaries.'
+          ) -join [Environment]::NewLine
+          $notesPath = Join-Path $env:RUNNER_TEMP 'shaitu-release-notes.md'
+          [IO.File]::WriteAllText($notesPath, $notes, [Text.UTF8Encoding]::new($false))
+          gh release create $env:RELEASE_TAG ('release/ShaiTu-Windows-v' + $env:VERSION + '-portable.zip') 'release/SHA256SUMS.txt' --repo $env:GITHUB_REPOSITORY --verify-tag --title ('ShaiTu ' + $env:RELEASE_TAG) --notes-file $notesPath
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub Release publishing failed.' }

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">晒图 · ShaiTu — 让截图随手可取</title>
+  <desc id="desc">Windows 截图晾衣绳。暖白背景上，两张示意照片由黄色夹子挂在绳上，呼应截图暂存和随手取用的用途。</desc>
+  <rect width="1200" height="400" rx="24" fill="#F7F2E8"/>
+  <g id="title-block" font-family="Segoe UI, Source Han Sans SC, Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif">
+    <text x="64" y="75" font-size="24" font-weight="600" fill="#4F706C">WINDOWS 截图晾衣绳</text>
+    <text x="59" y="208" font-size="112" font-weight="700" fill="#29323C">晒图</text>
+    <text x="318" y="200" font-size="32" font-weight="600" fill="#4F706C">ShaiTu</text>
+    <text x="64" y="296" font-size="52" font-weight="600" fill="#29323C">让截图随手可取</text>
+    <text x="66" y="349" font-size="22" fill="#59636A">Snipaste 钉图 · 晾衣绳暂存 · 桌面自由对比</text>
+  </g>
+  <g id="clothesline" fill="none" stroke="#4F706C" stroke-width="4" stroke-linecap="round">
+    <path d="M616 73 Q900 151 1167 81"/>
+    <circle cx="617" cy="73" r="5" fill="#4F706C" stroke="none"/>
+    <circle cx="1167" cy="81" r="5" fill="#4F706C" stroke="none"/>
+  </g>
+  <g id="landscape-photo" transform="translate(665 109) rotate(-6 94 96)">
+    <rect x="3" y="7" width="190" height="210" rx="14" fill="#29323C" opacity="0.08"/>
+    <rect width="190" height="210" rx="14" fill="#FFFFFF"/>
+    <rect x="12" y="13" width="166" height="168" rx="4" fill="#80BBD1"/>
+    <circle cx="133" cy="55" r="21" fill="#F7F2E8"/>
+    <path d="M12 156 L58 91 Q64 83 70 92 L112 156 Z" fill="#4F706C"/>
+    <path d="M66 181 L122 122 Q129 115 136 123 L178 170 L178 181 Z" fill="#29323C" opacity="0.70"/>
+    <rect x="79" y="-22" width="26" height="54" rx="8" fill="#F4C862" stroke="#29323C" stroke-width="3"/>
+    <path d="M88 -8 V17" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.65"/>
+  </g>
+  <g id="notes-photo" transform="translate(919 120) rotate(6 92 86)">
+    <rect x="3" y="7" width="184" height="182" rx="14" fill="#29323C" opacity="0.08"/>
+    <rect width="184" height="182" rx="14" fill="#FFFFFF"/>
+    <rect x="12" y="13" width="160" height="140" rx="4" fill="#E3EBE8"/>
+    <rect x="28" y="35" width="86" height="10" rx="5" fill="#4F706C"/>
+    <g fill="#4F706C" opacity="0.30">
+      <rect x="28" y="66" width="126" height="6" rx="3"/>
+      <rect x="28" y="83" width="111" height="6" rx="3"/>
+      <rect x="28" y="100" width="122" height="6" rx="3"/>
+      <rect x="28" y="117" width="79" height="6" rx="3"/>
+    </g>
+    <rect x="77" y="-23" width="26" height="54" rx="8" fill="#F4C862" stroke="#29323C" stroke-width="3"/>
+    <path d="M86 -9 V16" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.65"/>
+  </g>
+</svg>
