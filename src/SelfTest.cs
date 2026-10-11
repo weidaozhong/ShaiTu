@@ -18,12 +18,16 @@ namespace ShaiTu {
             int exit = 0;
             try {
                 string startupPath = Path.Combine(sandbox, "中文 & 空格", "ShaiTu.exe");
+                Directory.CreateDirectory(Path.GetDirectoryName(startupPath));
+                File.Copy(typeof(Program).Assembly.Location, startupPath);
                 var startup = new StartupRegistration(startupPath, Path.Combine(sandbox, "isolated-startup"));
                 Check(!startup.Exists && !startup.Enabled, "Missing startup shortcut is reported disabled");
                 startup.Enable();
                 Check(startup.Enabled && startup.MatchesPath,
                     "Real Shell shortcut preserves Unicode, spaces, target, startup arguments and working directory");
-                var movedStartup = new StartupRegistration(Path.Combine(sandbox, "moved", "ShaiTu.exe"), Path.GetDirectoryName(startup.Shortcut));
+                string movedPath = Path.Combine(sandbox, "moved", "ShaiTu.exe");
+                Directory.CreateDirectory(Path.GetDirectoryName(movedPath)); File.Copy(startupPath, movedPath);
+                var movedStartup = new StartupRegistration(movedPath, Path.GetDirectoryName(startup.Shortcut));
                 Check(!movedStartup.MatchesPath, "Moving the executable is detected instead of reporting a stale path as current");
                 movedStartup.Enable();
                 Check(movedStartup.MatchesPath && !startup.MatchesPath, "Re-enabling startup repairs the executable path");

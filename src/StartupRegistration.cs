@@ -20,7 +20,10 @@ namespace ShaiTu {
         }
         static object Call(object target, string method, params object[] args) { return Interaction.CallByName(target, method, CallType.Method, args); }
         static object Property(object target, string property) { return Interaction.CallByName(target, property, CallType.Get); }
-        static void Set(object target, string property, object value) { Interaction.CallByName(target, property, CallType.Let, value); }
+        static void Set(object target, string property, object value) {
+            try { Interaction.CallByName(target, property, CallType.Let, value); }
+            catch (Exception ex) { throw new IOException("无法设置启动快捷方式属性：" + property, ex); }
+        }
         static void Release(object value) { if (value != null && Marshal.IsComObject(value)) Marshal.FinalReleaseComObject(value); }
         public static bool ApprovalAllows(byte[] status) { return status == null || status.Length == 0 || status[0] == 2 || status[0] == 6; }
         public bool Exists { get { return File.Exists(Shortcut); } }
