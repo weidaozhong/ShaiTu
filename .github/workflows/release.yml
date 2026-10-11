@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing version tag, e.g. v0.5.9'
+        description: 'Existing version tag, e.g. v0.6.0'
         required: true
         type: string
 
@@ -92,6 +92,7 @@ jobs:
         run: |
           $notes = @(
             'Portable Windows build. Extract the ZIP and run ShaiTu.exe; keep its config file beside it.',
+            'License: Apache License 2.0. The ZIP includes LICENSE.txt, NOTICE.txt and retained third-party notices.',
             '',
             'Requirements: Windows 10 / 11 and .NET Framework 4.8. Automatic pin reception requires Snipaste.',
             'Snipaste is optional: if it is not running, the tray capture command opens Windows screen snipping and receives one result.',

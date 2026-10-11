@@ -10,7 +10,8 @@ using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("晒图 · ShaiTu")]
-[assembly: System.Reflection.AssemblyVersion("0.5.9.0")]
+[assembly: System.Reflection.AssemblyVersion("0.6.0.0")]
+[assembly: System.Reflection.AssemblyMetadata("License", "Apache-2.0")]
 
 namespace ShaiTu {
     public sealed class Program {
@@ -336,7 +337,7 @@ namespace ShaiTu {
             }));
             menu.Items.Add(Item("关于晒图", delegate {
                 line.Busy = true;
-                MessageBox.Show("晒图 0.5.9\n\n个人截图暂存工具", "关于晒图");
+                MessageBox.Show("晒图 0.6.0\n\n个人截图暂存工具\nApache License 2.0", "关于晒图");
                 line.Busy = false;
             }));
             menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add(Item("清理截图并退出", ExitFromTray));

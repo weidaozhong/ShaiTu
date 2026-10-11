@@ -1,6 +1,15 @@
+Third-party license notices
+
+The upstream notice below is retained from the previous ShaiTu license.
+It applies to inherited Tendedero material, where included, under its
+original MIT terms. ShaiTu's own code and modifications are licensed
+under Apache License 2.0. This notice does not relicense upstream material.
+
+Tendedero: https://github.com/alejandrobujan/tendedero
+Upstream license: https://github.com/alejandrobujan/tendedero/blob/main/LICENSE
+
 MIT License
 
-Copyright (c) 2026 ShaiTu contributors
 Copyright (c) 2026 Alejandro Buján
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,3 +29,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Name and icon
+
+The MIT License above covers the source code. It does not grant any rights
+to the Tendedero name or the Tendedero icon, including the icon artwork drawn
+by scripts/make-icon.swift and the images in the docs folder.
+
+You may build and use the app as published, and you may refer to Tendedero
+to say where your work comes from. Modified or redistributed versions must
+use a different name and a different icon, and must not suggest that they
+are Tendedero or are endorsed by its author.

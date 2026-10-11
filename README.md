@@ -75,6 +75,10 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-加 `-Test` 可运行自动检查。使用 `.\scripts\package-release.ps1 -Version 0.5.9` 打包便携版并生成 SHA256 校验文件。推送版本标签会触发 [Windows 自动构建与发布](https://github.com/weidaozhong/ShaiTu/actions)。
+加 `-Test` 可运行自动检查。使用 `.\scripts\package-release.ps1 -Version 0.6.0` 打包便携版并生成 SHA256 校验文件。推送版本标签会触发 [Windows 自动构建与发布](https://github.com/weidaozhong/ShaiTu/actions)。
 
 </details>
+
+## 许可证
+
+本项目采用 [Apache License 2.0](./LICENSE)。第三方材料保留原有许可，详见 [第三方许可证声明](./THIRD-PARTY-NOTICES.txt)。

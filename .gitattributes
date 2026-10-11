@@ -6,3 +6,6 @@
 *.svg text eol=lf
 *.png binary
 *.ico binary
+LICENSE text eol=lf
+NOTICE text eol=lf
+THIRD-PARTY-NOTICES.txt text eol=lf

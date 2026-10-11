@@ -12,8 +12,10 @@ $InputDirectory = [IO.Path]::GetFullPath($InputDirectory)
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $taskExe = Join-Path $InputDirectory 'ShaiTu.exe'
 $taskConfig = Join-Path $InputDirectory 'ShaiTu.exe.config'
-$taskLicense = Join-Path $taskRoot 'src\LICENSE'
-foreach ($taskFile in @($taskExe, $taskConfig, $taskLicense)) {
+$taskLicense = Join-Path $taskRoot 'LICENSE'
+$taskNotice = Join-Path $taskRoot 'NOTICE'
+$taskThirdParty = Join-Path $taskRoot 'THIRD-PARTY-NOTICES.txt'
+foreach ($taskFile in @($taskExe, $taskConfig, $taskLicense, $taskNotice, $taskThirdParty)) {
     if (!(Test-Path -LiteralPath $taskFile -PathType Leaf)) { throw "Required file missing: $taskFile" }
 }
 if (([Version](Get-Item -LiteralPath $taskExe).VersionInfo.FileVersion).ToString(3) -ne $Version) {
@@ -27,13 +29,14 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $taskStream = [IO.File]::Open($taskZipPath, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
 $taskZip = [IO.Compression.ZipArchive]::new($taskStream, [IO.Compression.ZipArchiveMode]::Create, $false)
 try {
-    foreach ($taskPair in @(@($taskExe, 'ShaiTu.exe'), @($taskConfig, 'ShaiTu.exe.config'), @($taskLicense, 'LICENSE.txt'))) {
+    foreach ($taskPair in @(@($taskExe, 'ShaiTu.exe'), @($taskConfig, 'ShaiTu.exe.config'), @($taskLicense, 'LICENSE.txt'), @($taskNotice, 'NOTICE.txt'), @($taskThirdParty, 'THIRD-PARTY-NOTICES.txt'))) {
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($taskZip, $taskPair[0], $taskPair[1], [IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
     $taskEntry = $taskZip.CreateEntry('START-HERE.txt')
     $taskWriter = [IO.StreamWriter]::new($taskEntry.Open(), [Text.UTF8Encoding]::new($true))
     try {
         $taskWriter.WriteLine('ShaiTu ' + $Version)
+        $taskWriter.WriteLine('License: Apache License 2.0. See LICENSE.txt, NOTICE.txt and THIRD-PARTY-NOTICES.txt.')
         $taskWriter.WriteLine('Requirements: Windows 10 / 11, .NET Framework 4.8, Snipaste for automatic pin reception.')
         $taskWriter.WriteLine('Extract the entire ZIP to a permanent folder, then run ShaiTu.exe. Keep ShaiTu.exe.config beside it.')
         $taskWriter.WriteLine('The app starts in the system tray. Capture with your existing Snipaste shortcut, then pin the image.')
