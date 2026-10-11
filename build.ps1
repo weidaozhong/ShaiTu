@@ -41,7 +41,7 @@ $iconWriter.Dispose(); $iconStream.Dispose()
 $framework = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
 $compiler = Join-Path $framework 'csc.exe'
 if (!(Test-Path -LiteralPath $compiler)) { throw 'Windows .NET Framework 4.8 (64-bit) is required.' }
-$refs = @('System.dll','System.Core.dll','System.Xaml.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Runtime.Serialization.dll','Microsoft.VisualBasic.dll','WPF\WindowsBase.dll','WPF\PresentationCore.dll','WPF\PresentationFramework.dll')
+$refs = @('System.dll','System.Core.dll','System.Xaml.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Runtime.Serialization.dll','WPF\WindowsBase.dll','WPF\PresentationCore.dll','WPF\PresentationFramework.dll')
 $compilerArgs = @('/nologo','/target:winexe','/platform:anycpu','/optimize+','/codepage:65001',('/out:'+(Join-Path $outDir 'ShaiTu.exe')),('/win32manifest:'+(Join-Path $taskRoot 'src\app.manifest')),('/win32icon:'+$iconPath))
 $compilerArgs += '/resource:'+$iconPath+',ShaiTu.AppIcon.ico'
 foreach ($ref in $refs) { $compilerArgs += '/reference:'+(Join-Path $framework $ref) }

@@ -4,6 +4,6 @@
     <AssemblyName>ShaiTu</AssemblyName><LangVersion>5</LangVersion><ApplicationManifest>app.manifest</ApplicationManifest><ApplicationIcon>assets\ShaiTu.ico</ApplicationIcon>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition><GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <ItemGroup><Reference Include="System.Runtime.Serialization" /><Reference Include="Microsoft.VisualBasic" /></ItemGroup>
+  <ItemGroup><Reference Include="System.Runtime.Serialization" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="assets\ShaiTu.ico" LogicalName="ShaiTu.AppIcon.ico" /></ItemGroup>
 </Project>
