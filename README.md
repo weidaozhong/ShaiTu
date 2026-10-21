@@ -48,10 +48,6 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 
 ## 文字识别
 
-![取字窗口：图片、识别文字和复制操作](./assets/readme/ocr.png)
-
-*文字窗口只做取字，不包含标注工具栏；窗口大小按图片自动适配。*
-
 常用入口：
 
 | 入口 | 行为 |
@@ -85,14 +81,6 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 
 > 为什么 ZIP 里没有 OCR 文件？Windows 已自带 OCR，晒图直接调用系统能力，避免重复打包上百 MB 的引擎；你不需要另外安装或配置。
 
-<details>
-<summary>开发排查：OCR 实现细节（普通用户不用看）</summary>
-
-- Windows 11 的 oneocr 首次使用会从本机截图工具复制运行文件到 `%LOCALAPPDATA%\ShaiTu\oneocr` 作为本地缓存，之后复用；这是程序自动完成的，不联网，也不需要用户操作。
-- 设置环境变量 `SHAITU_OCR=windows` 可强制使用 Windows OCR。
-- oneocr / ONNX 运行文件不随仓库或发布 ZIP 分发，详见第三方许可证声明。
-
-</details>
 
 ## 图片怎么用
 
@@ -167,8 +155,7 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 
 - 64 位 Windows 10 1903+ 或 Windows 11；
 - .NET Framework 4.8；
-- 系统 `WinMetadata`（Windows 10 1809+ 自带，1903+ 已包含 .NET 4.8）；
-- 取字的 oneocr 引擎随 Windows 11 截图工具提供，源码仓库和发布 ZIP 不包含它。
+- 系统 `WinMetadata`（Windows 10 1809+ 自带，1903+ 已包含 .NET 4.8）。
 
 ```powershell
 # 构建到 dist，并运行 103 项自动检查
