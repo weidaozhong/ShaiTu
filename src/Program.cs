@@ -10,7 +10,7 @@ using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("晒图 · ShaiTu")]
-[assembly: System.Reflection.AssemblyVersion("0.7.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.7.1.0")]
 [assembly: System.Reflection.AssemblyMetadata("License", "Apache-2.0")]
 
 namespace ShaiTu {
@@ -72,7 +72,9 @@ namespace ShaiTu {
             edgeHandle = new EdgeHandleWindow();
             edgeHandle.OpenRequested += delegate(Forms.Screen screen) {
                 if (closing || line.Busy || line.Dragging || store.Items.Count == 0 || Native.IsFullscreen(screen)) return;
-                dismissal.Reset(); edgeHandle.Sync(false, screen, line.Handle); line.Reveal(screen, true);
+                Toggle();
+                edgeHandle.SetLineVisible(line.Revealed);
+                edgeHandle.Sync(store.Settings.EdgeEnabled && store.Items.Count > 0, screen, line.Handle);
             };
             tray = new Forms.NotifyIcon { Text = "晒图 · 截图随手可取", Icon = AppIcons.CreateTrayIcon(), Visible = true };
             BuildMenu(); tray.DoubleClick += delegate { Show(); };
@@ -157,7 +159,9 @@ namespace ShaiTu {
                 app.Dispatcher.BeginInvoke(new Action(delegate { if (!closing) CopyTextFor(fresh); }), DispatcherPriority.Background);
             }
             var screen = Forms.Screen.FromPoint(Forms.Cursor.Position);
-            edgeHandle.Sync(false, screen, line.Handle); dismissal.Reset();
+            edgeHandle.SetLineVisible(true);
+            edgeHandle.Sync(store.Settings.EdgeEnabled && store.Items.Count > 0, screen, line.Handle);
+            dismissal.Reset();
             if (display.AcceptCapture(DateTime.Now, Native.IsFullscreen(screen))) {
                 line.Reveal(screen, true); line.KeepUntil = display.ConfirmUntil;
             }
@@ -218,10 +222,21 @@ namespace ShaiTu {
                 if (!closing && store.Settings.SnipasteEnabled && !line.Busy && !line.Dragging) snipaste.Tick(true);
             }), DispatcherPriority.Background);
         }
-        void Show() { if (store.Items.Count == 0) return; display.ExpandManually(); dismissal.Reset(); edgeHandle.Sync(false, Forms.Screen.FromPoint(Forms.Cursor.Position), line.Handle); line.Reveal(Forms.Screen.FromPoint(Forms.Cursor.Position), true); }
+        void Show() {
+            if (store.Items.Count == 0) return;
+            var screen = Forms.Screen.FromPoint(Forms.Cursor.Position);
+            display.ExpandManually(); dismissal.Reset();
+            edgeHandle.SetLineVisible(true);
+            edgeHandle.Sync(store.Settings.EdgeEnabled, screen, line.Handle);
+            line.Reveal(screen, true);
+        }
         void Toggle() {
-            if (line.Revealed) { display.CollapseManually(); dismissal.Reset(); line.KeepUntil = DateTime.MinValue; line.Tuck(true); }
-            else Show();
+            if (line.Revealed) {
+                display.CollapseManually(); dismissal.Reset(); line.KeepUntil = DateTime.MinValue; line.Tuck(true);
+                var screen = Forms.Screen.FromPoint(Forms.Cursor.Position);
+                edgeHandle.SetLineVisible(false);
+                edgeHandle.Sync(store.Settings.EdgeEnabled && store.Items.Count > 0, screen, line.Handle);
+            } else Show();
         }
         void Tick(object sender, EventArgs args) {
             if (closing) return;
@@ -255,7 +270,8 @@ namespace ShaiTu {
                 }
             }
             if (!line.Revealed) line.Place(screen);
-            edgeHandle.Sync(!line.Revealed && store.Settings.EdgeEnabled, screen, line.Handle);
+            edgeHandle.SetLineVisible(line.Revealed);
+            edgeHandle.Sync(store.Settings.EdgeEnabled, screen, line.Handle);
             if (!line.Revealed) { dismissal.Reset(); return; }
             bool inside = line.KeepRegion().Contains(pos) || edgeHandle.Region().Contains(pos);
             if (dismissal.Update(DateTime.Now, inside, line.Pinned || display.HoldVisible(DateTime.Now) || DateTime.Now < line.KeepUntil)) line.Tuck(true);
@@ -295,7 +311,7 @@ namespace ShaiTu {
         void Capture() {
             // Temporarily hide for the snip without losing a manually held session.
             windowsCapture.Cancel(); clipboardPending = false;
-            dismissal.Reset(); edgeHandle.Sync(false, null, line.Handle); line.Tuck(false);
+            dismissal.Reset(); edgeHandle.SetLineVisible(false); edgeHandle.Sync(false, null, line.Handle); line.Tuck(false);
             // Let the tray menu close and the hidden overlay repaint before Windows takes the screen.
             var launch = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
             launch.Tick += delegate {
@@ -399,12 +415,12 @@ namespace ShaiTu {
             menu.Items.Add(Item("打开缓存文件夹", delegate { Process.Start("explorer.exe", "\"" + store.Cache + "\""); }));
             menu.Items.Add(Item("使用说明", delegate {
                 line.Busy = true;
-                try { MessageBox.Show("使用 Snipaste 原快捷键截图，选择钉在桌面后才上晾衣绳。\n直接复制不上绳；编辑后钉图只接收最终版本。\n没有运行 Snipaste 时，托盘可使用 Windows 截图。\n系统截图需复制到剪贴板；Esc 取消，2 分钟后停止本次接收。\n\n左键复制，右键查看。\nShift + 右键打开更多操作，可另存需要保留的图片。\n拖到另一张图上交换位置，拖绳调整高度。\n\n右侧小把手停留 0.3 秒或单击即可展开。\n鼠标留在挂绳区保持显示，离开 1.2 秒收起。\n钉图成功后展开确认，快捷键展开后保持显示。\n没有图片时，绳子和小把手都隐藏。\nSnipaste 桌面贴图可自由拖动对比。\n拖出绳外松手、清空或退出只清理晒图缓存。\nSnipaste 贴图及原文件由 Snipaste 管理。", "晒图使用说明"); }
+                try { MessageBox.Show("使用 Snipaste 原快捷键截图，选择钉在桌面后才上晾衣绳。\n直接复制不上绳；编辑后钉图只接收最终版本。\n没有运行 Snipaste 时，托盘可使用 Windows 截图。\n系统截图需复制到剪贴板；Esc 取消，2 分钟后停止本次接收。\n\n左键复制，右键查看。\nShift + 右键打开更多操作，可另存需要保留的图片。\n拖到另一张图上交换位置，拖绳调整高度。\n\n有图片时右侧小把手始终显示：单击可展开或收起；隐藏时悬停 0.3 秒也可展开。\n鼠标留在挂绳区保持显示，离开 0.6 秒收起。\n钉图成功后展开确认，快捷键展开后保持显示。\n没有图片时，绳子和小把手都隐藏。\nSnipaste 桌面贴图可自由拖动对比。\n拖出绳外松手、清空或退出只清理晒图缓存。\nSnipaste 贴图及原文件由 Snipaste 管理。", "晒图使用说明"); }
                 finally { line.Busy = false; }
             }));
             menu.Items.Add(Item("关于晒图", delegate {
                 line.Busy = true;
-                MessageBox.Show("晒图 0.7.0\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
+                MessageBox.Show("晒图 0.7.1\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
                 line.Busy = false;
             }));
             menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add(Item("清理截图并退出", ExitFromTray));

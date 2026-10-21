@@ -51,6 +51,8 @@ try {
         $taskWriter.WriteLine('New photos enter from the left. At eight photos, the current rightmost photo is removed when another arrives.')
         $taskWriter.WriteLine('Dropping a photo outside the clothesline removes its ShaiTu cache. Tray exit clears ShaiTu screenshots.')
         $taskWriter.WriteLine('Snipaste originals and explicitly saved images remain untouched.')
+        $taskWriter.WriteLine('With photos present, the right-edge handle stays visible: click it to expand or collapse; hovering reveals when hidden.')
+        $taskWriter.WriteLine('The clothesline auto-hides 0.6 seconds after the pointer leaves it.')
         $taskWriter.WriteLine('Optional startup: enable it in the tray menu; the app opens 15 seconds after Windows logon.')
         $taskWriter.WriteLine('Source and Chinese guide: https://github.com/weidaozhong/ShaiTu')
     } finally { $taskWriter.Dispose() }

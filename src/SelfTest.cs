@@ -245,8 +245,8 @@ namespace ShaiTu {
                 Check(acks == 1 && failedBridge.LatestAlreadyStored(store), "Successful retry acknowledges saved capture and restart recognizes its existing pin");
                 failedBridge.Dispose();
                 var dismissal = new PointerDismissal();
-                Check(!dismissal.Update(acceptedAt, false, false) && !dismissal.Update(acceptedAt.AddMilliseconds(1100), false, false)
-                    && dismissal.Update(acceptedAt.AddMilliseconds(1201), false, false), "Pointer can cross outside the panel without hiding until 1.2 seconds elapse");
+                Check(!dismissal.Update(acceptedAt, false, false) && !dismissal.Update(acceptedAt.AddMilliseconds(500), false, false)
+                    && dismissal.Update(acceptedAt.AddMilliseconds(601), false, false), "Pointer can cross outside the panel without hiding until 0.6 seconds elapse");
                 dismissal.Reset(); dismissal.Update(acceptedAt, false, false);
                 Check(!dismissal.Update(acceptedAt.AddMilliseconds(1000), true, false) && !dismissal.Update(acceptedAt.AddSeconds(20), true, false)
                     && !dismissal.Update(acceptedAt.AddSeconds(21), false, false), "Returning to photos cancels dismissal and hovering keeps them stable indefinitely");

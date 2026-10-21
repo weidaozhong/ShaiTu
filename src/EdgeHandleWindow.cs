@@ -12,7 +12,9 @@ namespace ShaiTu {
     public sealed class EdgeHandleWindow : Window {
         public readonly Border Grip;
         readonly DispatcherTimer dwell = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        readonly TextBlock icon;
         bool blocked;
+        bool hoverEnabled = true;
         readonly Func<System.Drawing.Point> cursor;
         public IntPtr Handle;
         public event Action<Forms.Screen> OpenRequested;
@@ -22,15 +24,16 @@ namespace ShaiTu {
             Width = 18; Height = 64; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
             AllowsTransparency = true; Background = Brushes.Transparent; Topmost = true;
             ShowInTaskbar = false; ShowActivated = false;
+            icon = new TextBlock { Text = "‹", FontSize = 22, Foreground = LineWindow.Brush("#536173"),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             Grip = new Border { Background = LineWindow.Brush("#EEF0F3F7"), BorderBrush = LineWindow.Brush("#9DA7B4"),
                 BorderThickness = new Thickness(1, 1, 0, 1), CornerRadius = new CornerRadius(9, 0, 0, 9), Cursor = Cursors.Hand,
-                Child = new TextBlock { Text = "‹", FontSize = 22, Foreground = LineWindow.Brush("#536173"),
-                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+                Child = icon, ToolTip = "展开晾衣绳（悬停 0.3 秒）" };
             Content = Grip; Opacity = .72;
-            MouseEnter += delegate { Fade(1); if (!blocked) dwell.Start(); };
+            MouseEnter += delegate { Fade(1); if (!blocked && hoverEnabled) dwell.Start(); };
             MouseLeave += delegate { Fade(.72); blocked = false; dwell.Stop(); };
             Grip.PreviewMouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; Open(); };
-            dwell.Tick += delegate { dwell.Stop(); if (IsVisible && !blocked && Region().Contains(cursor())) Open(); };
+            dwell.Tick += delegate { dwell.Stop(); if (IsVisible && !blocked && hoverEnabled && Region().Contains(cursor())) Open(); };
             SourceInitialized += delegate {
                 Handle = new WindowInteropHelper(this).Handle;
                 Native.SetWindowLong(Handle, -20, Native.GetWindowLong(Handle, -20) | 0x08000000 | 0x80);
@@ -47,6 +50,14 @@ namespace ShaiTu {
         void Open() {
             dwell.Stop();
             if (OpenRequested != null) OpenRequested(Forms.Screen.FromHandle(Handle));
+        }
+        // While the clothesline is open the handle stays visible as a one-click hide
+        // button; in that mode hovering must not hide it by accident.
+        public void SetLineVisible(bool lineVisible) {
+            hoverEnabled = !lineVisible;
+            icon.Text = lineVisible ? "›" : "‹";
+            Grip.ToolTip = lineVisible ? "收起晾衣绳" : "展开晾衣绳（悬停 0.3 秒）";
+            if (lineVisible) dwell.Stop();
         }
         public System.Drawing.Rectangle Region() {
             Native.RECT r; return Handle != IntPtr.Zero && Native.GetWindowRect(Handle, out r)
@@ -75,7 +86,7 @@ namespace ShaiTu {
         public bool Update(DateTime now, bool inside, bool hold) {
             if (inside || hold) { Reset(); return false; }
             if (away == DateTime.MinValue) away = now;
-            return (now - away).TotalMilliseconds >= 1200;
+            return (now - away).TotalMilliseconds >= 600;
         }
         public void Reset() { away = DateTime.MinValue; }
     }
