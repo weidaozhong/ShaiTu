@@ -36,6 +36,8 @@ namespace ShaiTu {
         public event Action ToggleRequested;
         public event Action DisplayModeChanged;
         public event Action<Photo> PreviewRequested;
+        public event Action<Photo> TextRequested;
+        public event Action<Photo> CopyTextRequested;
         public IntPtr Handle;
         public uint OwnClipboardSequence;
         public bool HotkeyAvailable;
@@ -289,6 +291,8 @@ namespace ShaiTu {
             host.MouseLeave += delegate { close.Opacity = 0; rotate.BeginAnimation(RotateTransform.AngleProperty, Anim(rotate.Angle, tilt, .35)); };
             var menu = new ContextMenu { StaysOpen = false };
             AddMenu(menu, "复制图片", delegate { Copy(photo); }); AddMenu(menu, "预览", delegate { Preview(photo); });
+            AddMenu(menu, "复制文字", delegate { if (CopyTextRequested != null) CopyTextRequested(photo); });
+            AddMenu(menu, "提取文字…", delegate { if (TextRequested != null) TextRequested(photo); });
             AddMenu(menu, "用画图编辑", delegate { Edit(photo); }); AddMenu(menu, "另存为…", delegate { SaveAs(photo); });
             AddMenu(menu, "在文件夹中显示", delegate { Try(delegate { Process.Start("explorer.exe", "/select,\"" + photo.File + "\""); }); });
             menu.Items.Add(new Separator()); AddMenu(menu, "取下", delegate { RemoveAnimated(photo, host); });

@@ -7,3 +7,11 @@ Version 2.0. See LICENSE for the full terms.
 Any included third-party material retains its original license terms.
 The upstream license notice retained from the previous ShaiTu license is
 provided in THIRD-PARTY-NOTICES.txt.
+
+OCR components
+
+ShaiTu uses OCR capabilities supplied by the local Windows installation
+(Windows.Media.Ocr and, when available, components installed with the
+Microsoft Snipping Tool). Those Microsoft components are not included in
+this repository or in ShaiTu release packages and remain subject to their
+own terms. ShaiTu does not upload images or recognized text.

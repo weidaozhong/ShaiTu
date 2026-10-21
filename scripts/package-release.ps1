@@ -37,9 +37,12 @@ try {
     try {
         $taskWriter.WriteLine('ShaiTu ' + $Version)
         $taskWriter.WriteLine('License: Apache License 2.0. See LICENSE.txt, NOTICE.txt and THIRD-PARTY-NOTICES.txt.')
-        $taskWriter.WriteLine('Requirements: Windows 10 / 11, .NET Framework 4.8, Snipaste for automatic pin reception.')
+        $taskWriter.WriteLine('Requirements: 64-bit Windows 10 1809+ / Windows 11, .NET Framework 4.8. Snipaste is optional.')
         $taskWriter.WriteLine('Extract the entire ZIP to a permanent folder, then run ShaiTu.exe. Keep ShaiTu.exe.config beside it.')
         $taskWriter.WriteLine('The app starts in the system tray. Capture with your existing Snipaste shortcut, then pin the image.')
+        $taskWriter.WriteLine('Text recognition: right-click a photo, use the photo menu, or choose Capture and recognize text in the tray.')
+        $taskWriter.WriteLine('OCR runs locally with Windows OCR or the oneocr components installed by the Windows 11 Snipping Tool.')
+        $taskWriter.WriteLine('No OCR model or Microsoft OCR binary is bundled or downloaded by this ZIP.')
         $taskWriter.WriteLine('Snipaste is optional. When it is not running, choose Windows Capture in the tray to open Win+Shift+S.')
         $taskWriter.WriteLine('Windows capture receives one screenshot for this request, without enabling permanent clipboard reception.')
         $taskWriter.WriteLine('The Windows Snipping Tool must be available and copy the image to the clipboard. Esc cancels; the request expires after 2 minutes.')

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing version tag, e.g. v0.6.0'
+        description: 'Existing version tag, e.g. v0.7.0'
         required: true
         type: string
 
@@ -94,7 +94,11 @@ jobs:
             'Portable Windows build. Extract the ZIP and run ShaiTu.exe; keep its config file beside it.',
             'License: Apache License 2.0. The ZIP includes LICENSE.txt, NOTICE.txt and retained third-party notices.',
             '',
-            'Requirements: Windows 10 / 11 and .NET Framework 4.8. Automatic pin reception requires Snipaste.',
+            'Requirements: 64-bit Windows 10 1809+ / Windows 11 and .NET Framework 4.8. Automatic pin reception requires Snipaste.',
+            'Local OCR: right-click a photo, use the photo menu, or choose Capture and recognize text in the tray.',
+            'On Windows 11 the app prefers the oneocr engine installed with the Snipping Tool; otherwise it falls back to Windows OCR.',
+            'No OCR model or Microsoft OCR binary is bundled with this ZIP; OCR runs locally and images are not uploaded.',
+            'Annotation and scrolling long-screenshot features are not included in this release.',
             'Snipaste is optional: if it is not running, the tray capture command opens Windows screen snipping and receives one result.',
             'New photos enter from the left; overflow removes the current rightmost photo and its ShaiTu cache.',
             'Snipaste desktop pins coexist with the clothesline. Removing or clearing photos only clears ShaiTu caches.',

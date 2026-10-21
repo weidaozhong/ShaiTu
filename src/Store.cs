@@ -21,6 +21,8 @@ namespace ShaiTu {
         [DataMember] public uint HotkeyKey = 84;
         [DataMember] public bool SnipasteEnabled = true;
         [DataMember] public bool SnipasteConfigured;
+        [DataMember] public bool StartupEnabled = true;
+        [DataMember] public bool StartupConfigured;
         [DataMember] public double HeightOffset;
         [DataMember] public string SnipasteFolder = "";
         [DataMember] public string WatchFolder = "";
@@ -54,6 +56,10 @@ namespace ShaiTu {
             if (migrateInteraction) { Settings.AutoHide = true; Settings.EdgeEnabled = true; Settings.InteractionVersion = 3; }
             bool migrateCapture = Settings.CapturePolicyVersion < 1;
             if (migrateCapture) { Settings.ClipboardEnabled = false; Settings.CapturePolicyVersion = 1; }
+            // Older builds only had the shortcut itself as the on/off state. Default the
+            // first run of this build to on so a missing shortcut is repaired.
+            bool migrateStartup = !Settings.StartupConfigured;
+            if (migrateStartup) { Settings.StartupEnabled = true; Settings.StartupConfigured = true; }
             if (Double.IsNaN(Settings.HeightOffset) || Double.IsInfinity(Settings.HeightOffset) || Settings.HeightOffset < 0) Settings.HeightOffset = 0;
             foreach (string name in Settings.Files.Take(Capacity)) {
                 if (!IsOwnedName(name)) continue;
@@ -64,7 +70,7 @@ namespace ShaiTu {
             var live = new HashSet<string>(Items.Select(p => p.File), StringComparer.OrdinalIgnoreCase);
             foreach (string file in Directory.GetFiles(Cache, "*.png"))
                 if (IsOwnedName(Path.GetFileName(file)) && !live.Contains(file)) TryDelete(file);
-            if ((migrateInteraction || migrateCapture) && File.Exists(Path.Combine(Root, "settings.json"))) Save();
+            if ((migrateInteraction || migrateCapture || migrateStartup) && File.Exists(Path.Combine(Root, "settings.json"))) Save();
         }
         static Settings ReadSettings(string path) {
             try { using (var s = File.OpenRead(path)) return (Settings)new DataContractJsonSerializer(typeof(Settings)).ReadObject(s); }
@@ -80,7 +86,8 @@ namespace ShaiTu {
                 AutoHide = Settings.AutoHide, InteractionVersion = Settings.InteractionVersion, HotkeyConfigured = true,
                 HotkeyModifiers = Settings.HotkeyModifiers, HotkeyKey = Settings.HotkeyKey,
                 HeightOffset = Settings.HeightOffset, SnipasteEnabled = Settings.SnipasteEnabled, SnipasteConfigured = true,
-                SnipasteFolder = Settings.SnipasteFolder, WatchFolder = Settings.WatchFolder, Files = Items.Select(p => Path.GetFileName(p.File)).ToList() };
+                SnipasteFolder = Settings.SnipasteFolder, WatchFolder = Settings.WatchFolder, StartupEnabled = Settings.StartupEnabled, StartupConfigured = true,
+                Files = Items.Select(p => Path.GetFileName(p.File)).ToList() };
             string path = Path.Combine(Root, "settings.json"), tmp = path + ".tmp";
             using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None)) {
                 new DataContractJsonSerializer(typeof(Settings)).WriteObject(fs, state); fs.Flush(true);
@@ -120,6 +127,29 @@ namespace ShaiTu {
             foreach (Photo p in previous) if (!Items.Contains(p)) TryDelete(p.File);
             LogCapture(origin, path, image.PixelWidth, image.PixelHeight);
             RaiseChanged(); return true;
+        }
+        public bool ReplaceImage(Photo photo, BitmapSource image) {
+            if (photo == null || image == null) return false;
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            byte[] bytes;
+            using (var stream = new MemoryStream()) { encoder.Save(stream); bytes = stream.ToArray(); }
+            if (bytes.Length > 25 * 1024 * 1024) throw new InvalidDataException("标注后的图片超过 25 MB，请缩小后再保存。");
+            string temporary = photo.File + ".tmp";
+            File.WriteAllBytes(temporary, bytes);
+            try {
+                if (File.Exists(photo.File)) File.Replace(temporary, photo.File, null);
+                else File.Move(temporary, photo.File);
+            } catch {
+                TryDelete(temporary);
+                throw;
+            }
+            Photo loaded = LoadPhoto(photo.File);
+            photo.Hash = loaded.Hash; photo.Thumb = loaded.Thumb;
+            photo.Width = loaded.Width; photo.Height = loaded.Height;
+            photo.Length = loaded.Length; photo.LastWriteUtc = loaded.LastWriteUtc;
+            Save(); RaiseChanged();
+            return true;
         }
         public void Remove(Photo p) {
             int index = Items.IndexOf(p); if (index < 0) return;

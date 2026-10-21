@@ -42,3 +42,20 @@ You may build and use the app as published, and you may refer to Tendedero
 to say where your work comes from. Modified or redistributed versions must
 use a different name and a different icon, and must not suggest that they
 are Tendedero or are endorsed by its author.
+
+---
+
+Microsoft OCR components (not redistributed)
+
+ShaiTu can load OCR components that are installed with Microsoft Windows /
+the Windows Snipping Tool (for example oneocr.dll, oneocr.onemodel and
+onnxruntime.dll). These files are not part of this repository or the release
+ZIP and are not redistributed by ShaiTu. At runtime they are copied from the
+locally installed Snipping Tool into the user's local ShaiTu cache and are
+governed by the terms that accompany that Microsoft software.
+
+On systems without those components, ShaiTu uses the OCR API provided by
+Windows (Windows.Media.Ocr / WinMetadata), which is also an operating-system
+component and is not redistributed here.
+
+No OCR model, ONNX runtime or Microsoft OCR binary is bundled with ShaiTu.

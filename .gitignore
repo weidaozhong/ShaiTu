@@ -5,6 +5,7 @@ src/bin/
 src/obj/
 *.user
 release/
+samples/
 desktop.ini
 .env
 .env.*

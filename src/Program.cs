@@ -10,7 +10,7 @@ using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("晒图 · ShaiTu")]
-[assembly: System.Reflection.AssemblyVersion("0.6.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.7.0.0")]
 [assembly: System.Reflection.AssemblyMetadata("License", "Apache-2.0")]
 
 namespace ShaiTu {
@@ -33,10 +33,17 @@ namespace ShaiTu {
         bool closing;
         bool initializing = true;
         bool fullscreenSuppressed;
+        WorkbenchWindow workbench;
+        bool textAfterCapture;
+        DateTime textAfterCaptureDeadline;
         [STAThread] public static int Main(string[] args) {
             bool startupLaunch = args.Length > 0 && args[0] == StartupRegistration.Arguments;
             if (startupLaunch) Thread.Sleep(StartupRegistration.DelayMilliseconds);
+            if (args.Length >= 1 && (args[0] == "--startup-enable" || args[0] == "--startup-disable" || args[0] == "--startup-status")) return StartupCommand(args[0]);
             if (args.Length >= 2 && args[0] == "--self-test") return SelfTest.Run(args[1]);
+            if (args.Length >= 2 && args[0] == "--ocr-test") return OcrTest.Run(args[1]);
+            if (args.Length >= 2 && args[0] == "--workbench-test") return WorkbenchTest.Run(args[1]);
+            if (args.Length >= 2 && args[0] == "--ocr-batch") return OcrBatch.Run(args[1]);
             if (args.Length >= 2 && args[0] == "--snipaste-test") return SelfTest.SnipasteLive(args[1]);
             if (args.Length >= 2 && args[0] == "--layout-metrics") return SelfTest.LayoutMetrics(args[1]);
             if (args.Length >= 2 && args[0] == "--smoke-test") return new Program().Run(Path.GetFullPath(args[1]));
@@ -55,10 +62,13 @@ namespace ShaiTu {
                 store.Settings.HotkeyModifiers = 7; store.Settings.HotkeyKey = 120;
             }
             if (smokeOutput == null) {
-                try { new StartupRegistration(Forms.Application.ExecutablePath).Migrate(); }
+                try { EnsureStartup(); }
                 catch (Exception ex) { store.Log(ex); }
             }
             line = new LineWindow(store, Error, false);
+            line.PreviewRequested += delegate(Photo photo) { OpenWorkbench(photo); };
+            line.TextRequested += delegate(Photo photo) { OpenWorkbench(photo); };
+            line.CopyTextRequested += CopyPhotoText;
             edgeHandle = new EdgeHandleWindow();
             edgeHandle.OpenRequested += delegate(Forms.Screen screen) {
                 if (closing || line.Busy || line.Dragging || store.Items.Count == 0 || Native.IsFullscreen(screen)) return;
@@ -141,11 +151,66 @@ namespace ShaiTu {
             return app.Run();
         }
         void NewPhoto() {
+            if (textAfterCapture && DateTime.Now <= textAfterCaptureDeadline && store.Items.Count > 0) {
+                textAfterCapture = false;
+                Photo fresh = store.Items[0];
+                app.Dispatcher.BeginInvoke(new Action(delegate { if (!closing) CopyTextFor(fresh); }), DispatcherPriority.Background);
+            }
             var screen = Forms.Screen.FromPoint(Forms.Cursor.Position);
             edgeHandle.Sync(false, screen, line.Handle); dismissal.Reset();
             if (display.AcceptCapture(DateTime.Now, Native.IsFullscreen(screen))) {
                 line.Reveal(screen, true); line.KeepUntil = display.ConfirmUntil;
             }
+        }
+        void OpenWorkbench(Photo photo) {
+            if (closing || photo == null) return;
+            if (workbench != null) { workbench.Restore(); return; }
+            bool wasRevealed = line.Revealed;
+            line.Busy = true;
+            if (line.Revealed) line.Tuck(false);
+            WorkbenchWindow window = null;
+            window = new WorkbenchWindow(store, photo, Error, delegate {
+                if (workbench == window) workbench = null;
+                if (closing) return;
+                line.Busy = false;
+                if (wasRevealed && store.Items.Count > 0) line.Reveal(Forms.Screen.FromPoint(Forms.Cursor.Position), true);
+            });
+            window.MinimizedChanged += delegate(bool minimized) {
+                if (closing || workbench != window) return;
+                if (minimized) {
+                    line.Busy = false;
+                    if (wasRevealed && store.Items.Count > 0) line.Reveal(Forms.Screen.FromPoint(Forms.Cursor.Position), true);
+                } else {
+                    line.Busy = true;
+                    if (line.Revealed) line.Tuck(false);
+                }
+            };
+            workbench = window;
+            window.Show();
+        }
+        void CopyPhotoText(Photo photo) { CopyTextFor(photo); }
+        void CopyTextFor(Photo photo) {
+            if (photo == null || closing) return;
+            line.Toast("正在识别文字…");
+            ThreadPool.QueueUserWorkItem(delegate {
+                try {
+                    var image = Store.ReadImage(photo.File, false);
+                    string text = OcrService.Recognize(image).Text;
+                    app.Dispatcher.BeginInvoke(new Action(delegate {
+                        if (closing) return;
+                        if (String.IsNullOrEmpty(text)) { line.Toast("没有识别到文字"); return; }
+                        try { Clipboard.SetText(text); line.Toast("✓ 已复制 " + text.Length + " 字"); }
+                        catch (Exception ex) { Error(ex); }
+                    }));
+                } catch (Exception ex) {
+                    app.Dispatcher.BeginInvoke(new Action(delegate { if (!closing) Error(ex); }));
+                }
+            });
+        }
+        void CaptureAndRecognize() {
+            textAfterCapture = true;
+            textAfterCaptureDeadline = DateTime.Now.AddMinutes(2);
+            Capture();
         }
         void QueueSnipasteScan() {
             if (closing || app.Dispatcher.HasShutdownStarted) return;
@@ -264,7 +329,9 @@ namespace ShaiTu {
             menu = new Forms.ContextMenuStrip();
             menu.Items.Add(Item("展开 / 收起    " + HotkeyBinding.Label(store.Settings.HotkeyModifiers, store.Settings.HotkeyKey), Toggle));
             menu.Items.Add(Item("设置展开 / 收起快捷键…", ConfigureHotkey));
-            var capture = Item("截图", Capture); menu.Items.Add(capture); menu.Items.Add(Item("添加图片…", Import));
+            var capture = Item("截图", Capture); menu.Items.Add(capture);
+            menu.Items.Add(Item("截图并取字（识别后复制）", CaptureAndRecognize));
+            menu.Items.Add(Item("添加图片…", Import));
             menu.Opening += delegate { capture.Text = SnipasteCommands.RunningExecutable() != null
                 ? "Snipaste 截图    " + SnipasteCommands.HotkeyLabel() : "Windows 截图    Win + Shift + S"; };
             menu.Items.Add(new Forms.ToolStripSeparator());
@@ -337,7 +404,7 @@ namespace ShaiTu {
             }));
             menu.Items.Add(Item("关于晒图", delegate {
                 line.Busy = true;
-                MessageBox.Show("晒图 0.6.0\n\n个人截图暂存工具\nApache License 2.0", "关于晒图");
+                MessageBox.Show("晒图 0.7.0\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
                 line.Busy = false;
             }));
             menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add(Item("清理截图并退出", ExitFromTray));
@@ -357,15 +424,56 @@ namespace ShaiTu {
             try { store.ClearForExit(); Cleanup(); app.Shutdown(); }
             catch (Exception ex) { line.Busy = false; Error(ex); }
         }
+        void EnsureStartup() {
+            var startup = new StartupRegistration(Forms.Application.ExecutablePath);
+            if (store.Settings.StartupEnabled) {
+                // Repair a missing shortcut or one pointing at an old exe, but do not
+                // override a user's Task Manager disable when the shortcut is intact.
+                if (!startup.Exists || !startup.MatchesPath) startup.Enable();
+            } else if (startup.Exists) {
+                startup.Disable();
+            }
+            StartupRegistration.RemoveLegacy();
+        }
         bool StartupEnabled() {
             try { return new StartupRegistration(Forms.Application.ExecutablePath).Enabled; }
             catch { return false; }
         }
         void ToggleStartup() {
             var startup = new StartupRegistration(Forms.Application.ExecutablePath);
-            if (startup.Enabled) startup.Disable(); else startup.Enable();
-            StartupRegistration.RemoveLegacy();
-            BuildMenu();
+            try {
+                bool enable = !startup.Enabled;
+                if (enable) startup.Enable(); else startup.Disable();
+                store.Settings.StartupEnabled = enable;
+                store.Settings.StartupConfigured = true;
+                store.Save();
+                StartupRegistration.RemoveLegacy();
+                BuildMenu();
+            } catch (Exception ex) { Error(ex); }
+        }
+        static int StartupCommand(string command) {
+            try {
+                var startup = new StartupRegistration(Forms.Application.ExecutablePath);
+                if (command == "--startup-status") {
+                    Console.WriteLine("Shortcut: " + startup.Shortcut);
+                    Console.WriteLine("Exists: " + startup.Exists);
+                    Console.WriteLine("Enabled: " + startup.Enabled);
+                    Console.WriteLine("MatchesPath: " + startup.MatchesPath);
+                    return startup.Enabled && startup.MatchesPath ? 0 : 1;
+                }
+                bool enable = command == "--startup-enable";
+                if (enable) startup.Enable(); else startup.Disable();
+                string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShaiTu");
+                var state = new Store(root);
+                state.Settings.StartupEnabled = enable;
+                state.Settings.StartupConfigured = true;
+                state.Save();
+                Console.WriteLine((enable ? "Enabled: " : "Disabled: ") + startup.Shortcut);
+                return 0;
+            } catch (Exception ex) {
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
         }
         void Error(Exception ex) {
             if (store != null) store.Log(ex);
@@ -376,6 +484,7 @@ namespace ShaiTu {
             if (timer != null) timer.Stop(); if (watcher != null) watcher.Dispose();
             if (snipaste != null) snipaste.Dispose();
             if (edgeHandle != null) edgeHandle.Stop();
+            if (workbench != null) { WorkbenchWindow window = workbench; workbench = null; window.Close(); }
             if (line != null) { line.Cleanup(); line.Close(); }
             if (tray != null) { var icon = tray.Icon; tray.Visible = false; tray.Dispose(); if (icon != null) icon.Dispose(); } if (menu != null) menu.Dispose();
         }

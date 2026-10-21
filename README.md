@@ -1,16 +1,32 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="晒图 · ShaiTu：Windows 上的截图晾衣绳，让截图随手可取">
+  <img src="./assets/readme/hero.svg" width="100%" alt="晒图 · ShaiTu：Windows 上的截图晾衣绳与本地取字">
 </p>
 
 # 晒图 · ShaiTu
 
-把截图挂在桌面晾衣绳上，随手复制、查看和拖动排序。支持 Snipaste 钉图联动，也能使用 Windows 自带的截图工具。
+把截图挂在桌面晾衣绳上，随手复制、取字和排序。支持 Snipaste 钉图联动，也能使用 Windows 自带的截图工具；文字识别在本机完成，不上传图片。
 
-**Windows 10 / 11 · .NET Framework 4.8 · 便携版，无需安装**
+**Windows 10 1809+ / Windows 11（64 位）· .NET Framework 4.8 · 便携版，无需安装**
 
 ![晒图界面：三张示例图片由夹子挂在桌面晾衣绳上](./assets/readme/interface.png)
 
 *程序实际渲染的界面，使用示例图片。*
+
+## 0.7.0 更新
+
+- 新增**本地取字**：右键图片打开文字窗口，支持拖选文字、复制选中、复制全部、编辑全文和重新识别。
+- 新增**截图并取字**：在托盘选择后截图，图片上绳的同时把识别文字复制到剪贴板。
+- OCR 优先使用 Windows 11 截图工具自带的 oneocr 引擎，缺失时自动回退到系统 OCR；不下载模型、不上传图片。
+- 标注和长截图功能已移除；现在专注于截图暂存与取字。
+
+## 功能
+
+- **截图晾衣绳**：新截图从左侧挂入，左键复制、右键取字、拖动交换、拖出取下。
+- **取字**：右键图片、图片菜单“复制文字 / 提取文字”，或托盘“截图并取字（识别后复制）”。
+- **Snipaste 联动**：自动接收最终钉在桌面的截图；Snipaste 桌面贴图保留，可自由拖动对比。
+- **Windows 截图后备**：Snipaste 未运行时，托盘入口自动切换到 Windows 截图。
+- **本地优先**：图片、设置和 OCR 缓存都在本机；识别使用系统组件，不联网。
+- **轻量交互**：自动隐藏、右侧小把手、全局展开快捷键、开机启动、剪贴板/文件夹接收。
 
 ## 开始使用
 
@@ -24,13 +40,47 @@
 
 Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快捷键设置。自动检测不到贴图目录时，可在托盘中选择 Snipaste 安装目录或 `history` 目录。
 
+## 文字识别
+
+![取字窗口：图片、识别文字和复制操作](./assets/readme/ocr.png)
+
+*文字窗口只做取字，不包含标注工具栏；窗口大小按图片自动适配。*
+
+常用入口：
+
+| 入口 | 行为 |
+| --- | --- |
+| **右键图片** | 打开取字窗口，自动识别并显示文字 |
+| **Shift + 右键 → 复制文字** | 后台识别，直接把全文复制到剪贴板，不打开窗口 |
+| **Shift + 右键 → 提取文字…** | 打开取字窗口 |
+| **托盘 → 截图并取字（识别后复制）** | 用 Snipaste 或 Windows 截图，图片上绳后自动识别并复制全文 |
+
+注意：直接用 Snipaste 截图/钉图不会自动 OCR；需要取字时右键图片，或从托盘使用“截图并取字”。
+
+**取字窗口：**
+
+- 自动开始识别，显示原图、词数和行数；没有常驻的蓝色词框。
+- 在文字上拖动可选中词语，`Ctrl + A` 全选；只高亮选中的文字。
+- 底部按钮：**重新识别**、**编辑全文**、**全选**、**复制全部**、**复制选中**。
+- “编辑全文”可以先修正识别结果，复制时优先使用修改后的全文。
+- 点击窗口外会最小化到任务栏（与 `–` 一致）；拖动卡片边缘可调整大小。
+- 没有全局取字快捷键；取字入口都在图片或托盘上。
+
+**识别引擎：**
+
+- **Windows 11**：优先使用系统截图工具自带的 oneocr，准确率更好；首次使用时从本机已安装的截图工具复制运行文件到 `%LOCALAPPDATA%\ShaiTu\oneocr`，之后复用。
+- **Windows 10 / 未安装截图工具**：自动回退到系统 `Windows.Media.Ocr`。
+- 不下载 OCR 模型，不上传图片；oneocr 运行文件不随本项目分发。
+- 排查时可设置环境变量 `SHAITU_OCR=windows`，强制使用系统 OCR。
+
 ## 图片怎么用
 
 | 操作 | 结果 |
 | --- | --- |
 | 左键单击 | 复制图片，并显示“已复制” |
-| 右键单击 | 查看大图 |
+| 右键单击 | 打开取字窗口（图片同时作为大图查看） |
 | Shift + 右键 | 打开更多操作菜单；左键点击菜单外关闭 |
+| 复制文字 / 提取文字… | 后台复制文字 / 打开取字窗口 |
 | 拖到另一张图片上 | 两张图片交换位置 |
 | 拖出挂绳区域后松手 | 取下图片并清理对应缓存 |
 | 拖拽时按 Esc | 取消拖拽，图片保留 |
@@ -59,26 +109,40 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 
 ## 托盘设置
 
+- **截图：** 有 Snipaste 时调用它的截图入口；没有时使用 Windows 截图。
+- **截图并取字：** 截图后自动识别并复制文字。
 - **开机启动：** 登录 Windows 后延迟 15 秒运行，先保持隐藏。移动程序后，手动运行一次以更新启动路径。
 - **接收剪贴板图片：** 默认关闭，可开启以接收其他应用复制的图片；Snipaste 的直接复制仍不上绳。
 - **监听文件夹：** 自动接收所选文件夹中新生成的图片。
 - **清空晾衣绳 / 清理截图并退出：** 清理暂存图片，保留高度、快捷键等设置。
 
-暂存图片和设置位于 `%LOCALAPPDATA%\ShaiTu`。没有截图工具时，仍可使用“添加图片”、剪贴板接收或监听文件夹，正常复制、查看、排序和另存。
+暂存图片和设置位于 `%LOCALAPPDATA%\ShaiTu`。没有截图工具时，仍可使用“添加图片”、剪贴板接收或监听文件夹，正常复制、取字、查看、排序和另存。
 
-<details>
-<summary><strong>从源码构建</strong></summary>
+## 从源码构建
 
-项目使用 C#、WPF 和 .NET Framework 4.8。源码仓库不包含 exe，运行以下命令会生成 `dist/ShaiTu.exe`：
+项目使用 C#、WPF 和 .NET Framework 4.8，通过系统自带的 `csc.exe` 编译，不依赖 NuGet 或 Windows SDK。
+
+要求：
+
+- 64 位 Windows 10 1809+ 或 Windows 11；
+- .NET Framework 4.8；
+- 系统 `WinMetadata`（Windows 10 1809+ 自带）；
+- 取字的 oneocr 引擎随 Windows 11 截图工具提供，源码仓库和发布 ZIP 不包含它。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+# 构建到 dist，并运行 103 项自动检查
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
+
+# 打包便携版 ZIP 和 SHA256
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-release.ps1 -Version 0.7.0
 ```
 
-加 `-Test` 可运行自动检查。使用 `.\scripts\package-release.ps1 -Version 0.6.0` 打包便携版并生成 SHA256 校验文件。推送版本标签会触发 [Windows 自动构建与发布](https://github.com/weidaozhong/ShaiTu/actions)。
+推送 `v*` 标签会触发 [Windows 自动构建与发布](https://github.com/weidaozhong/ShaiTu/actions)，生成带 SHA256 的便携版 Release。
 
-</details>
+开发时可使用 `--self-test`、`--ocr-test`、`--workbench-test`、`--smoke-test` 等命令行检查；`--ocr-test` 需要自备本地 OCR 样本。
 
 ## 许可证
 
 本项目采用 [Apache License 2.0](./LICENSE)。第三方材料保留原有许可，详见 [第三方许可证声明](./THIRD-PARTY-NOTICES.txt)。
+
+OCR 使用本机 Windows / Microsoft 截图工具提供的组件，本项目不重新分发这些组件；相关说明见第三方许可证声明。
