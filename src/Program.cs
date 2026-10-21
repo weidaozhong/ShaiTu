@@ -10,7 +10,7 @@ using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("晒图 · ShaiTu")]
-[assembly: System.Reflection.AssemblyVersion("0.7.1.0")]
+[assembly: System.Reflection.AssemblyVersion("0.7.2.0")]
 [assembly: System.Reflection.AssemblyMetadata("License", "Apache-2.0")]
 
 namespace ShaiTu {
@@ -34,6 +34,7 @@ namespace ShaiTu {
         bool initializing = true;
         bool fullscreenSuppressed;
         WorkbenchWindow workbench;
+        WelcomeWindow welcome;
         bool textAfterCapture;
         DateTime textAfterCaptureDeadline;
         [STAThread] public static int Main(string[] args) {
@@ -43,6 +44,7 @@ namespace ShaiTu {
             if (args.Length >= 2 && args[0] == "--self-test") return SelfTest.Run(args[1]);
             if (args.Length >= 2 && args[0] == "--ocr-test") return OcrTest.Run(args[1]);
             if (args.Length >= 2 && args[0] == "--workbench-test") return WorkbenchTest.Run(args[1]);
+            if (args.Length >= 2 && args[0] == "--welcome-test") return WelcomeTest.Run(args[1]);
             if (args.Length >= 2 && args[0] == "--ocr-batch") return OcrBatch.Run(args[1]);
             if (args.Length >= 2 && args[0] == "--snipaste-test") return SelfTest.SnipasteLive(args[1]);
             if (args.Length >= 2 && args[0] == "--layout-metrics") return SelfTest.LayoutMetrics(args[1]);
@@ -56,7 +58,9 @@ namespace ShaiTu {
         }
         int Run(string smokeOutput) {
             app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-            store = new Store(smokeOutput == null ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShaiTu") : Path.Combine(smokeOutput, "native-smoke"));
+            string dataRoot = smokeOutput == null ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShaiTu") : Path.Combine(smokeOutput, "native-smoke");
+            bool firstRun = smokeOutput == null && !File.Exists(Path.Combine(dataRoot, "settings.json")) && !File.Exists(Path.Combine(dataRoot, "settings.json.bak"));
+            store = new Store(dataRoot);
             if (smokeOutput != null) {
                 store.Settings.ClipboardEnabled = false; store.Settings.SnipasteEnabled = false; store.Settings.HeightOffset = 90;
                 store.Settings.HotkeyModifiers = 7; store.Settings.HotkeyKey = 120;
@@ -72,9 +76,7 @@ namespace ShaiTu {
             edgeHandle = new EdgeHandleWindow();
             edgeHandle.OpenRequested += delegate(Forms.Screen screen) {
                 if (closing || line.Busy || line.Dragging || store.Items.Count == 0 || Native.IsFullscreen(screen)) return;
-                Toggle();
-                edgeHandle.SetLineVisible(line.Revealed);
-                edgeHandle.Sync(store.Settings.EdgeEnabled && store.Items.Count > 0, screen, line.Handle);
+                ToggleFromHandle(screen);
             };
             tray = new Forms.NotifyIcon { Text = "晒图 · 截图随手可取", Icon = AppIcons.CreateTrayIcon(), Visible = true };
             BuildMenu(); tray.DoubleClick += delegate { Show(); };
@@ -100,6 +102,7 @@ namespace ShaiTu {
             if (!line.HotkeyAvailable && smokeOutput == null) Error(new InvalidOperationException(HotkeyBinding.Label(store.Settings.HotkeyModifiers, store.Settings.HotkeyKey) + " 已被占用，可在托盘重新设置展开快捷键。"));
             bool startupHidden = !line.Revealed && !line.IsVisible;
             initializing = false;
+            if (firstRun && smokeOutput == null) app.Dispatcher.BeginInvoke(new Action(ShowWelcome), DispatcherPriority.ApplicationIdle);
             if (line.Pinned && smokeOutput == null) Show();
             if (smokeOutput != null) {
                 line.Place(Forms.Screen.FromPoint(Forms.Cursor.Position));
@@ -237,6 +240,22 @@ namespace ShaiTu {
                 edgeHandle.SetLineVisible(false);
                 edgeHandle.Sync(store.Settings.EdgeEnabled && store.Items.Count > 0, screen, line.Handle);
             } else Show();
+        }
+        // The edge handle is a lightweight peek: showing from it must not turn on the
+        // manual-hold mode, otherwise the clothesline never auto-hides afterwards.
+        void ToggleFromHandle(Forms.Screen screen) {
+            if (line.Revealed) {
+                display.CollapseManually(); dismissal.Reset(); line.KeepUntil = DateTime.MinValue; line.Tuck(true);
+                edgeHandle.SetLineVisible(false);
+                edgeHandle.Sync(store.Settings.EdgeEnabled && store.Items.Count > 0, screen, line.Handle);
+                return;
+            }
+            display.CollapseManually();
+            dismissal.Reset();
+            line.KeepUntil = DateTime.MinValue;
+            edgeHandle.SetLineVisible(true);
+            edgeHandle.Sync(store.Settings.EdgeEnabled, screen, line.Handle);
+            line.Reveal(screen, true);
         }
         void Tick(object sender, EventArgs args) {
             if (closing) return;
@@ -420,7 +439,7 @@ namespace ShaiTu {
             }));
             menu.Items.Add(Item("关于晒图", delegate {
                 line.Busy = true;
-                MessageBox.Show("晒图 0.7.1\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
+                MessageBox.Show("晒图 0.7.2\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
                 line.Busy = false;
             }));
             menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add(Item("清理截图并退出", ExitFromTray));
@@ -491,6 +510,25 @@ namespace ShaiTu {
                 return 1;
             }
         }
+        void ShowWelcome() {
+            if (closing || welcome != null) return;
+            try { store.Save(); } catch (Exception ex) { store.Log(ex); }
+            welcome = new WelcomeWindow(
+                delegate { CloseWelcome(); Capture(); },
+                delegate { CloseWelcome(); Import(); });
+            welcome.Closed += delegate {
+                welcome = null;
+                if (closing) return;
+                try { store.Save(); } catch (Exception ex) { store.Log(ex); }
+            };
+            welcome.Show();
+        }
+        void CloseWelcome() {
+            WelcomeWindow window = welcome;
+            if (window == null) return;
+            welcome = null;
+            window.Close();
+        }
         void Error(Exception ex) {
             if (store != null) store.Log(ex);
             if (tray != null && !closing && !initializing) tray.ShowBalloonTip(5000, "晒图", ex.Message, Forms.ToolTipIcon.Warning);
@@ -501,6 +539,7 @@ namespace ShaiTu {
             if (snipaste != null) snipaste.Dispose();
             if (edgeHandle != null) edgeHandle.Stop();
             if (workbench != null) { WorkbenchWindow window = workbench; workbench = null; window.Close(); }
+            if (welcome != null) { WelcomeWindow window = welcome; welcome = null; window.Close(); }
             if (line != null) { line.Cleanup(); line.Close(); }
             if (tray != null) { var icon = tray.Icon; tray.Visible = false; tray.Dispose(); if (icon != null) icon.Dispose(); } if (menu != null) menu.Dispose();
         }

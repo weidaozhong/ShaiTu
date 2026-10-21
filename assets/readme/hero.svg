@@ -1,13 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
-  <title id="title">晒图 · ShaiTu — 让截图随手可取</title>
-  <desc id="desc">Windows 截图晾衣绳。暖白背景上，两张示意照片由黄色夹子挂在绳上，呼应截图暂存和随手取用的用途。</desc>
+  <title id="title">晒图 · ShaiTu — 截图随手可取，文字本地识别</title>
+  <desc id="desc">Windows 截图晾衣绳与本地取字工具。暖白背景上，两张示意照片由黄色夹子挂在绳上，呼应截图暂存、随手取用和本地文字识别的用途。</desc>
   <rect width="1200" height="400" rx="24" fill="#F7F2E8"/>
   <g id="title-block" font-family="Segoe UI, Source Han Sans SC, Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif">
-    <text x="64" y="75" font-size="24" font-weight="600" fill="#4F706C">WINDOWS 截图晾衣绳</text>
+    <text x="64" y="75" font-size="24" font-weight="600" fill="#4F706C">WINDOWS 截图晾衣绳 · 本地取字</text>
     <text x="59" y="208" font-size="112" font-weight="700" fill="#29323C">晒图</text>
     <text x="318" y="200" font-size="32" font-weight="600" fill="#4F706C">ShaiTu</text>
     <text x="64" y="296" font-size="52" font-weight="600" fill="#29323C">让截图随手可取</text>
-    <text x="66" y="349" font-size="22" fill="#59636A">Snipaste 钉图 · 晾衣绳暂存 · 桌面自由对比</text>
+    <text x="66" y="349" font-size="22" fill="#59636A">Snipaste 钉图 · 本地取字 · 桌面随取</text>
+    <text x="66" y="379" font-size="16" fill="#7A858B">本地识别 · 图片不上传 · 解压即用</text>
   </g>
   <g id="clothesline" fill="none" stroke="#4F706C" stroke-width="4" stroke-linecap="round">
     <path d="M616 73 Q900 151 1167 81"/>

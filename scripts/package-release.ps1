@@ -37,8 +37,10 @@ try {
     try {
         $taskWriter.WriteLine('ShaiTu ' + $Version)
         $taskWriter.WriteLine('License: Apache License 2.0. See LICENSE.txt, NOTICE.txt and THIRD-PARTY-NOTICES.txt.')
-        $taskWriter.WriteLine('Requirements: 64-bit Windows 10 1809+ / Windows 11, .NET Framework 4.8. Snipaste is optional.')
+        $taskWriter.WriteLine('Requirements: 64-bit Windows 10 1903+ / Windows 11, .NET Framework 4.8. Snipaste is optional.')
         $taskWriter.WriteLine('Extract the entire ZIP to a permanent folder, then run ShaiTu.exe. Keep ShaiTu.exe.config beside it.')
+        $taskWriter.WriteLine('Extract and double-click ShaiTu.exe: no Snipaste or OCR path configuration is required.')
+        $taskWriter.WriteLine('A first-run welcome window appears; later the app stays in the system tray.')
         $taskWriter.WriteLine('The app starts in the system tray. Capture with your existing Snipaste shortcut, then pin the image.')
         $taskWriter.WriteLine('Text recognition: right-click a photo, use the photo menu, or choose Capture and recognize text in the tray.')
         $taskWriter.WriteLine('OCR runs locally with Windows OCR or the oneocr components installed by the Windows 11 Snipping Tool.')
@@ -53,7 +55,7 @@ try {
         $taskWriter.WriteLine('Snipaste originals and explicitly saved images remain untouched.')
         $taskWriter.WriteLine('With photos present, the right-edge handle stays visible: click it to expand or collapse; hovering reveals when hidden.')
         $taskWriter.WriteLine('The clothesline auto-hides 0.6 seconds after the pointer leaves it.')
-        $taskWriter.WriteLine('Optional startup: enable it in the tray menu; the app opens 15 seconds after Windows logon.')
+        $taskWriter.WriteLine('Startup is off by default for a fresh extraction; enable it in the tray menu if wanted. It then opens 15 seconds after Windows logon.')
         $taskWriter.WriteLine('Source and Chinese guide: https://github.com/weidaozhong/ShaiTu')
     } finally { $taskWriter.Dispose() }
 } finally { $taskZip.Dispose() }
