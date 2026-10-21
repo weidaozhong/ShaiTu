@@ -21,7 +21,7 @@ namespace ShaiTu {
         [DataMember] public uint HotkeyKey = 84;
         [DataMember] public bool SnipasteEnabled = true;
         [DataMember] public bool SnipasteConfigured;
-        [DataMember] public bool StartupEnabled;
+        [DataMember] public bool StartupEnabled = true;
         [DataMember] public bool StartupConfigured;
         [DataMember] public double HeightOffset;
         [DataMember] public string SnipasteFolder = "";
@@ -45,7 +45,6 @@ namespace ShaiTu {
         public Store(string root) {
             Root = root; Cache = Path.Combine(root, "images");
             Directory.CreateDirectory(Cache);
-            bool hadSettings = File.Exists(Path.Combine(Root, "settings.json")) || File.Exists(Path.Combine(Root, "settings.json.bak"));
             Settings = ReadSettings(Path.Combine(Root, "settings.json")) ?? ReadSettings(Path.Combine(Root, "settings.json.bak")) ?? new Settings();
             if (Settings.Files == null) Settings.Files = new List<string>();
             if (!Settings.SnipasteConfigured) { Settings.SnipasteEnabled = true; Settings.SnipasteConfigured = true; }
@@ -57,11 +56,10 @@ namespace ShaiTu {
             if (migrateInteraction) { Settings.AutoHide = true; Settings.EdgeEnabled = true; Settings.InteractionVersion = 3; }
             bool migrateCapture = Settings.CapturePolicyVersion < 1;
             if (migrateCapture) { Settings.ClipboardEnabled = false; Settings.CapturePolicyVersion = 1; }
-            // Older builds only had the shortcut itself as the on/off state. Preserve that
-            // for upgrades, but a fresh portable extraction should not add itself to startup
-            // until the user opts in from the tray.
+            // Older builds only had the shortcut itself as the on/off state. Enable it
+            // on first run; the welcome guide explains how to turn it off later.
             bool migrateStartup = !Settings.StartupConfigured;
-            if (migrateStartup) { Settings.StartupEnabled = hadSettings; Settings.StartupConfigured = true; }
+            if (migrateStartup) { Settings.StartupEnabled = true; Settings.StartupConfigured = true; }
             if (Double.IsNaN(Settings.HeightOffset) || Double.IsInfinity(Settings.HeightOffset) || Settings.HeightOffset < 0) Settings.HeightOffset = 0;
             foreach (string name in Settings.Files.Take(Capacity)) {
                 if (!IsOwnedName(name)) continue;

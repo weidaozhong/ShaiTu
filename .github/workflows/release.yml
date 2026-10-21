@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing version tag, e.g. v0.7.2'
+        description: 'Existing version tag, e.g. v0.7.3'
         required: true
         type: string
 
@@ -100,12 +100,12 @@ jobs:
             'No OCR binaries, models or downloads are required; this is not an installation step. Images and recognized text are not uploaded.',
             'Annotation and scrolling long-screenshot features are not included in this release.',
             'The right-edge handle stays visible whenever photos exist; click it to expand or collapse. Auto-hide waits 0.6 seconds.',
-            'First run shows a welcome guide. A fresh extraction does not configure startup automatically; all capture/OCR paths are auto-detected.',
+            'First run shows a welcome guide and enables startup by default (15-second delay after logon); it can be disabled in the tray. All capture/OCR paths are auto-detected.',
             'Snipaste is optional: if it is not running, the tray capture command opens Windows screen snipping and receives one result.',
             'New photos enter from the left; overflow removes the current rightmost photo and its ShaiTu cache.',
             'Snipaste desktop pins coexist with the clothesline. Removing or clearing photos only clears ShaiTu caches.',
             'Default show/hide shortcut: Ctrl + Alt + T, customizable in the tray.',
-            'Optional logon startup uses a Startup-folder shortcut with a 15-second delay.',
+            'Startup uses a Startup-folder shortcut and opens the app 15 seconds after Windows logon.'
             '',
             'The self-test and native startup smoke test passed on the Windows runner.',
             'See README for the Chinese usage guide and the tested interaction boundaries.'

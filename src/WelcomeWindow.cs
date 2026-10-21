@@ -43,6 +43,7 @@ namespace ShaiTu {
             body.Children.Add(Line("截图：使用 Snipaste 快捷键截图，完成后选择“钉在桌面”；没有 Snipaste 时，用托盘 → Windows 截图。"));
             body.Children.Add(Line("取字：右键任意图片，或托盘 → 截图并取字（识别后复制）。"));
             body.Children.Add(Line("展开 / 收起：Ctrl + Alt + T，或屏幕右侧小把手。"));
+            body.Children.Add(Line("首次运行会默认开启开机启动（登录后延迟 15 秒）；不需要时可在托盘关闭。"));
             body.Children.Add(Line("取字使用本机 Windows 组件，不下载模型、不上传图片，也不需要填写路径。"));
             Grid.SetRow(body, 1); grid.Children.Add(body);
 

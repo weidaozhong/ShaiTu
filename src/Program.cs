@@ -10,7 +10,7 @@ using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("晒图 · ShaiTu")]
-[assembly: System.Reflection.AssemblyVersion("0.7.2.0")]
+[assembly: System.Reflection.AssemblyVersion("0.7.3.0")]
 [assembly: System.Reflection.AssemblyMetadata("License", "Apache-2.0")]
 
 namespace ShaiTu {
@@ -439,7 +439,7 @@ namespace ShaiTu {
             }));
             menu.Items.Add(Item("关于晒图", delegate {
                 line.Busy = true;
-                MessageBox.Show("晒图 0.7.2\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
+                MessageBox.Show("晒图 0.7.3\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
                 line.Busy = false;
             }));
             menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add(Item("清理截图并退出", ExitFromTray));
