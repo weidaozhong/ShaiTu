@@ -8,6 +8,8 @@
 
 **Windows 10 1903+ / Windows 11（64 位）· .NET Framework 4.8 · 便携版，无需安装**
 
+> **开箱即用：** 解压后双击 `ShaiTu.exe` 即可；不需要安装 Snipaste，也不用填写 OCR 路径。取字使用 Windows 自带能力，详见下文“识别引擎”。
+
 ![晒图界面：三张示例图片由夹子挂在桌面晾衣绳上](./assets/readme/interface.png)
 
 *程序实际渲染的界面，使用示例图片。*
@@ -70,12 +72,27 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 - 点击窗口外会最小化到任务栏（与 `–` 一致）；拖动卡片边缘可调整大小。
 - 没有全局取字快捷键；取字入口都在图片或托盘上。
 
-**识别引擎：**
+**识别引擎（你不需要做任何配置）：**
 
-- **Windows 11**：优先使用系统截图工具自带的 oneocr；首次使用时从本机已安装的截图工具复制运行文件到 `%LOCALAPPDATA%\ShaiTu\oneocr`，之后复用。
-- **Windows 10 / 未安装截图工具**：自动回退到系统 `Windows.Media.Ocr`。
-- 不下载 OCR 模型，不上传图片；oneocr 运行文件不随本项目分发。
-- 排查时可设置环境变量 `SHAITU_OCR=windows`，强制使用系统 OCR。
+| 系统 | 使用什么 | 你需要做什么 |
+| --- | --- | --- |
+| Windows 11，系统截图工具提供 oneocr | oneocr，识别质量更好 | 无 |
+| Windows 10，或系统没有 oneocr | Windows 自带 OCR | 无 |
+
+- 打开取字窗口或点“复制文字”就会自动选择引擎；不需要安装 OCR、不用下载模型、不用填写路径，也不会上传图片。
+- **oneocr 不随晒图 ZIP 分发**：它是 Microsoft 截图工具自带的组件。系统里有就自动复用，没有就自动改用 Windows OCR；两种方式都能取字，区别只是识别质量。
+- 发布包只包含晒图程序本身；识别能力来自 Windows，所以不需要额外安装文件。
+
+> 为什么 ZIP 里没有 OCR 文件？Windows 10/11 已自带 OCR，oneocr 属于 Microsoft 组件。晒图直接调用系统能力，避免重复打包 100 MB 以上的引擎，也不需要你另外配置。
+
+<details>
+<summary>开发排查：OCR 实现细节（普通用户不用看）</summary>
+
+- Windows 11 的 oneocr 首次使用会从本机截图工具复制运行文件到 `%LOCALAPPDATA%\ShaiTu\oneocr` 作为本地缓存，之后复用；这是程序自动完成的，不联网，也不需要用户操作。
+- 设置环境变量 `SHAITU_OCR=windows` 可强制使用 Windows OCR。
+- oneocr / ONNX 运行文件不随仓库或发布 ZIP 分发，详见第三方许可证声明。
+
+</details>
 
 ## 图片怎么用
 
