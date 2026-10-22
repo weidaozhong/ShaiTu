@@ -153,28 +153,6 @@ Snipaste 启动后，托盘菜单切回它的截图入口，并读取当前快�
 - 新增本地取字、取字窗口和“截图并取字”。
 - 标注和长截图功能已移除；现在专注于截图暂存与取字。
 
-## 从源码构建
-
-项目使用 C#、WPF 和 .NET Framework 4.8，通过系统自带的 `csc.exe` 编译，不依赖 NuGet 或 Windows SDK。
-
-要求：
-
-- 64 位 Windows 10 1903+ 或 Windows 11；
-- .NET Framework 4.8；
-- 系统 `WinMetadata`（Windows 10 1809+ 自带，1903+ 已包含 .NET 4.8）。
-
-```powershell
-# 构建到 dist，并运行 103 项自动检查
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Test
-
-# 打包便携版 ZIP 和 SHA256
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-release.ps1 -Version 0.7.3
-```
-
-推送 `v*` 标签会触发 [Windows 自动构建与发布](https://github.com/weidaozhong/ShaiTu/actions)，生成带 SHA256 的便携版 Release。
-
-开发时可使用 `--self-test`、`--ocr-test`、`--workbench-test`、`--smoke-test`、`--welcome-test` 等命令行检查；`--ocr-test` 需要自备本地 OCR 样本。
-
 ## 许可证
 
 本项目采用 [Apache License 2.0](./LICENSE)。第三方材料保留原有许可，详见 [第三方许可证声明](./THIRD-PARTY-NOTICES.txt)。
