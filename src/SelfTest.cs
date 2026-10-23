@@ -103,7 +103,10 @@ namespace ShaiTu {
                 string original = Path.Combine(sandbox, "original.png"); WritePng(samples[1], original);
                 Check(store.ImportFile(original), "File import");
                 Photo p = store.Items.First(); var data = LineWindow.DragData(p);
-                Check(data.ContainsFileDropList() && data.GetFileDropList()[0] == p.File && data.ContainsImage(), "Drag payload contains file and full bitmap");
+                Check(data.ContainsFileDropList() && data.GetFileDropList()[0] == p.File && data.ContainsImage(), "Clipboard payload contains file and full bitmap");
+                var dragPayload = LineWindow.DragPayload(p);
+                Check(dragPayload.GetDataPresent("ShaiTu.PhotoId") && !dragPayload.GetDataPresent(DataFormats.FileDrop) && !dragPayload.GetDataPresent(DataFormats.Bitmap),
+                    "Dragging within the rope does not advertise a file or bitmap to the desktop");
                 var loaded = new Store(store.Root);
                 Check(loaded.Items.Count == 2 && loaded.Items[0].Width == 600, "Snapshots restored after restart");
                 Check(loaded.Items[0].Hash == Store.ImageHash(samples[1]) && loaded.Items[1].Hash == Store.ImageHash(samples[0]),

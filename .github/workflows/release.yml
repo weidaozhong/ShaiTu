@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing version tag, e.g. v0.7.3'
+        description: 'Existing version tag, e.g. v0.7.4'
         required: true
         type: string
 
@@ -103,6 +103,7 @@ jobs:
             'First run shows a welcome guide and enables startup by default (15-second delay after logon); it can be disabled in the tray. All capture/OCR paths are auto-detected.',
             'Snipaste is optional: if it is not running, the tray capture command opens Windows screen snipping and receives one result.',
             'New photos enter from the left; overflow removes the current rightmost photo and its ShaiTu cache.',
+            'Dragging a photo off the clothesline removes it and its cache without creating a desktop or folder copy; use Save As to export.',
             'Snipaste desktop pins coexist with the clothesline. Removing or clearing photos only clears ShaiTu caches.',
             'Default show/hide shortcut: Ctrl + Alt + T, customizable in the tray.',
             'Startup uses a Startup-folder shortcut and opens the app 15 seconds after Windows logon.'

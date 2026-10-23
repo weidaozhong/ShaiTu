@@ -339,7 +339,9 @@ namespace ShaiTu {
                 card.QueryContinueDrag += continuation;
                 try {
                     Try(delegate {
-                        var result = DragDrop.DoDragDrop(card, DragData(photo), DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+                        // Do not publish a file drop: dropping outside the rope must remove the
+                        // photo instead of letting Explorer copy it to the desktop.
+                        var result = DragDrop.DoDragDrop(card, DragPayload(photo), DragDropEffects.Move);
                         FinishPhotoDrag(photo, result, cancelled, released, Forms.Cursor.Position);
                     });
                 } finally {
@@ -366,10 +368,18 @@ namespace ShaiTu {
             store.Remove(photo);
         }
         static void AddMenu(ContextMenu menu, string label, Action action) { var item = new MenuItem { Header = label }; item.Click += delegate { action(); }; menu.Items.Add(item); }
+        // Clipboard payload: still exposes the file and image for other applications.
         public static DataObject DragData(Photo photo) {
             var data = new DataObject(); data.SetFileDropList(new StringCollection { photo.File });
             data.SetData("ShaiTu.PhotoId", photo.File);
             data.SetData(DataFormats.Bitmap, Store.ReadImage(photo.File, false)); return data;
+        }
+        // Internal drag payload: no file or bitmap formats, so Explorer/desktop cannot
+        // accept the drag and create a copy. Photo cards still recognize PhotoId.
+        public static DataObject DragPayload(Photo photo) {
+            var data = new DataObject();
+            data.SetData("ShaiTu.PhotoId", photo.File);
+            return data;
         }
         void Copy(Photo p) {
             Try(delegate {
