@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
@@ -22,6 +23,8 @@ namespace ShaiTu {
         readonly TranslateTransform slide = new TranslateTransform();
         readonly Action<Exception> error;
         public bool Dragging, Busy;
+        bool droppedOnCard;
+        readonly List<KeyValuePair<Photo, Rect>> dragTargets = new List<KeyValuePair<Photo, Rect>>();
         public bool Pinned {
             get { return !store.Settings.AutoHide; }
             set {
@@ -217,6 +220,11 @@ namespace ShaiTu {
             double cardWidth = Math.Min(164, Math.Max(48, spacing - 18));
             for (int i = 0; i < count; i++) {
                 double x = w / 2 + (i - (count - 1) / 2.0) * spacing;
+                double? placement = store.PlacementFor(store.Items[i]);
+                if (placement.HasValue) {
+                    double half = cardWidth / 2 + 8;
+                    x = Math.Max(half, Math.Min(w - half, placement.Value * w));
+                }
                 double y = 12 + 4 * sag * (x / w) * (1 - x / w);
                 UIElement card = CreatePhoto(store.Items[i], cardWidth, i, animate);
                 Canvas.SetLeft(card, x - cardWidth / 2); Canvas.SetTop(card, y - 10); Surface.Children.Add(card);
@@ -250,7 +258,7 @@ namespace ShaiTu {
             grip.LostMouseCapture += delegate { finish(); };
         }
         UIElement CreatePhoto(Photo photo, double width, int index, bool animate) {
-            var host = new Canvas { Width = width, Height = 156, ToolTip = "左键复制 · 右键查看 · 拖到另一张上交换\n拖出晾衣绳松手取下并清理 · Esc 取消\nShift + 右键更多操作 · 长按画图 · " + photo.Width + " × " + photo.Height };
+            var host = new Canvas { Width = width, Height = 156, Tag = photo, ToolTip = "左键复制 · 右键取字 · 拖动调整位置\n拖到另一张上交换 · 拖出晾衣绳松手取下\nShift + 右键更多操作 · " + photo.Width + " × " + photo.Height };
             double scale = Math.Min((width - 10) / photo.Width, 112.0 / photo.Height);
             var image = new Image { Source = photo.Thumb, Width = Math.Max(1, photo.Width * scale), Height = Math.Max(1, photo.Height * scale), Stretch = Stretch.Uniform };
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
@@ -271,6 +279,7 @@ namespace ShaiTu {
             card.DragOver += delegate(object s, DragEventArgs e) { dragOver(e); };
             card.DragLeave += delegate { card.BorderBrush = Brush("#F8FFFFFF"); };
             card.Drop += delegate(object s, DragEventArgs e) {
+                droppedOnCard = true;
                 string file = e.Data.GetData("ShaiTu.PhotoId") as string;
                 Photo source = store.Items.FirstOrDefault(p => p.File == file);
                 e.Handled = true; e.Effects = DragDropEffects.None;
@@ -312,9 +321,8 @@ namespace ShaiTu {
             card.ContextMenuOpening += delegate(object s, ContextMenuEventArgs e) {
                 if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0) e.Handled = true;
             };
-            Point down = new Point(); bool pressed = false, held = false, dragged = false;
-            var hold = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            hold.Tick += delegate { hold.Stop(); if (pressed && !dragged) { held = true; pressed = false; card.ReleaseMouseCapture(); Edit(photo); } };
+            Point down = new Point(); bool pressed = false, dragged = false;
+            double freeStartMouse = 0, freeStartLeft = 0;
             card.PreviewMouseLeftButtonDown += delegate(object s, MouseButtonEventArgs e) {
                 // Preview events tunnel through the card before reaching its close button.
                 DependencyObject origin = e.OriginalSource as DependencyObject;
@@ -323,35 +331,43 @@ namespace ShaiTu {
                     origin = VisualTreeHelper.GetParent(origin);
                 }
                 e.Handled = true;
-                down = e.GetPosition(card); pressed = true; held = false; dragged = false; hold.Start(); card.CaptureMouse();
+                down = e.GetPosition(card); pressed = true; dragged = false;
+                host.Opacity = 1; card.Cursor = Cursors.Arrow; Panel.SetZIndex(host, 0); card.CaptureMouse();
             };
-            card.LostMouseCapture += delegate { hold.Stop(); pressed = false; };
+            card.LostMouseCapture += delegate {
+                pressed = false; dragged = false; Dragging = false;
+                host.Opacity = 1; card.Cursor = Cursors.Arrow; Panel.SetZIndex(host, 0);
+            };
             card.PreviewMouseMove += delegate(object s, MouseEventArgs e) {
-                if (!pressed || held || dragged || e.LeftButton != MouseButtonState.Pressed) return;
-                Point now = e.GetPosition(card);
-                if (Math.Abs(now.X - down.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(now.Y - down.Y) < SystemParameters.MinimumVerticalDragDistance) return;
-                dragged = true; hold.Stop(); card.ReleaseMouseCapture(); Dragging = true; host.Opacity = .5;
-                bool cancelled = false, released = false;
-                QueryContinueDragEventHandler continuation = delegate(object sender, QueryContinueDragEventArgs args) {
-                    if (args.EscapePressed || args.Action == DragAction.Cancel) cancelled = true;
-                    if (!args.EscapePressed && (args.KeyStates & DragDropKeyStates.LeftMouseButton) == 0) released = true;
-                };
-                card.QueryContinueDrag += continuation;
-                try {
-                    Try(delegate {
-                        // Do not publish a file drop: dropping outside the rope must remove the
-                        // photo instead of letting Explorer copy it to the desktop.
-                        var result = DragDrop.DoDragDrop(card, DragPayload(photo), DragDropEffects.Move);
-                        FinishPhotoDrag(photo, result, cancelled, released, Forms.Cursor.Position);
-                    });
-                } finally {
-                    card.QueryContinueDrag -= continuation;
-                    Dragging = false; host.Opacity = 1; KeepUntil = DateTime.Now.AddSeconds(1);
+                if (!pressed || e.LeftButton != MouseButtonState.Pressed) return;
+                if (!dragged) {
+                    Point now = e.GetPosition(card);
+                    if (Math.Abs(now.X - down.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(now.Y - down.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+                    dragged = true; Dragging = true;
+                    host.Opacity = .82; card.Cursor = Cursors.SizeWE; Panel.SetZIndex(host, 5);
+                    freeStartMouse = e.GetPosition(Surface).X;
+                    freeStartLeft = Canvas.GetLeft(host);
+                    CaptureDragTargets();
                 }
+                double ropeWidth = Math.Max(Width, 400);
+                double left = freeStartLeft + (e.GetPosition(Surface).X - freeStartMouse);
+                left = Math.Max(8, Math.Min(ropeWidth - host.Width - 8, left));
+                Canvas.SetLeft(host, left);
+                double sag = Math.Min(30, ropeWidth * .018);
+                double center = left + host.Width / 2;
+                double y = 12 + 4 * sag * (center / ropeWidth) * (1 - center / ropeWidth);
+                Canvas.SetTop(host, y - 10);
+                e.Handled = true;
             };
             card.PreviewMouseLeftButtonUp += delegate(object s, MouseButtonEventArgs e) {
-                bool shouldCopy = pressed && !held && !dragged;
-                pressed = false; hold.Stop(); card.ReleaseMouseCapture(); if (shouldCopy) Copy(photo); e.Handled = true;
+                bool wasDragged = dragged;
+                pressed = false; dragged = false; Dragging = false;
+                card.ReleaseMouseCapture();
+                host.Opacity = 1; card.Cursor = Cursors.Arrow; Panel.SetZIndex(host, 0);
+                if (wasDragged) FinishLiveMove(photo, host, Forms.Cursor.Position);
+                else Copy(photo);
+                KeepUntil = DateTime.Now.AddSeconds(1);
+                e.Handled = true;
             };
             return host;
         }
@@ -362,10 +378,53 @@ namespace ShaiTu {
             photoMenu = null;
             if (wasOpen) { Busy = false; KeepUntil = DateTime.Now.AddMilliseconds(700); }
         }
+        void CaptureDragTargets() {
+            dragTargets.Clear();
+            foreach (UIElement child in Surface.Children) {
+                FrameworkElement element = child as FrameworkElement;
+                Photo target = element == null ? null : element.Tag as Photo;
+                if (target == null) continue;
+                try {
+                    Point a = element.PointToScreen(new Point(0, 0));
+                    Point b = element.PointToScreen(new Point(element.ActualWidth, element.ActualHeight));
+                    dragTargets.Add(new KeyValuePair<Photo, Rect>(target, new Rect(a, b)));
+                } catch { }
+            }
+        }
+        void FinishLiveMove(Photo photo, FrameworkElement host, System.Drawing.Point point) {
+            Photo target = null;
+            foreach (var entry in dragTargets) {
+                if (entry.Key != photo && entry.Value.Contains(new Point(point.X, point.Y))) { target = entry.Key; break; }
+            }
+            if (target != null) {
+                try { store.Swap(photo, target); } catch (Exception ex) { error(ex); }
+                return;
+            }
+            if (!ActiveRegion().Contains(point)) {
+                try { store.Remove(photo); } catch (Exception ex) { error(ex); }
+                return;
+            }
+            try {
+                double ropeWidth = Math.Max(Width, 400);
+                double left = Canvas.GetLeft(host);
+                if (!Double.IsNaN(left)) {
+                    store.SetPlacement(photo, (left + host.Width / 2) / ropeWidth);
+                    Rebuild(false);
+                }
+            } catch (Exception ex) { error(ex); }
+        }
         internal void FinishPhotoDrag(Photo photo, DragDropEffects result, bool cancelled, bool released, System.Drawing.Point point) {
             if (cancelled || !released) return;
-            if (ActiveRegion().Contains(point) && !(result == DragDropEffects.Move && !File.Exists(photo.File))) return;
-            store.Remove(photo);
+            if (!ActiveRegion().Contains(point)) { store.Remove(photo); return; }
+            // A drop on another card is a swap. A drop on the rope itself moves the
+            // photo to that horizontal position, including when it is the only photo.
+            if (droppedOnCard || result == DragDropEffects.Link) return;
+            try {
+                double width = Math.Max(Width, 400);
+                double x = PointFromScreen(new Point(point.X, point.Y)).X;
+                store.SetPlacement(photo, x / width);
+                Rebuild(false);
+            } catch (Exception ex) { error(ex); }
         }
         static void AddMenu(ContextMenu menu, string label, Action action) { var item = new MenuItem { Header = label }; item.Click += delegate { action(); }; menu.Items.Add(item); }
         // Clipboard payload: still exposes the file and image for other applications.

@@ -10,7 +10,7 @@ using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("晒图 · ShaiTu")]
-[assembly: System.Reflection.AssemblyVersion("0.7.4.0")]
+[assembly: System.Reflection.AssemblyVersion("0.7.5.0")]
 [assembly: System.Reflection.AssemblyMetadata("License", "Apache-2.0")]
 
 namespace ShaiTu {
@@ -33,6 +33,8 @@ namespace ShaiTu {
         bool closing;
         bool initializing = true;
         bool fullscreenSuppressed;
+        DateTime topEdgeSince = DateTime.MinValue;
+        bool topEdgeShown;
         WorkbenchWindow workbench;
         WelcomeWindow welcome;
         bool textAfterCapture;
@@ -288,11 +290,24 @@ namespace ShaiTu {
                     line.Reveal(screen, true); line.KeepUntil = display.ConfirmUntil;
                 }
             }
+            bool topEdge = pos.Y <= screen.Bounds.Top + 3;
+            if (line.Revealed) {
+                if (topEdge) topEdgeShown = true;
+            } else if (topEdge) {
+                if (topEdgeSince == DateTime.MinValue) topEdgeSince = DateTime.Now;
+                else if (!topEdgeShown && (DateTime.Now - topEdgeSince).TotalMilliseconds >= 300) {
+                    topEdgeShown = true;
+                    ToggleFromHandle(screen);
+                }
+            } else {
+                topEdgeSince = DateTime.MinValue;
+                topEdgeShown = false;
+            }
             if (!line.Revealed) line.Place(screen);
             edgeHandle.SetLineVisible(line.Revealed);
             edgeHandle.Sync(store.Settings.EdgeEnabled, screen, line.Handle);
             if (!line.Revealed) { dismissal.Reset(); return; }
-            bool inside = line.KeepRegion().Contains(pos) || edgeHandle.Region().Contains(pos);
+            bool inside = line.KeepRegion().Contains(pos) || edgeHandle.Region().Contains(pos) || topEdge;
             if (dismissal.Update(DateTime.Now, inside, line.Pinned || display.HoldVisible(DateTime.Now) || DateTime.Now < line.KeepUntil)) line.Tuck(true);
         }
         void ConfigureSnipaste() {
@@ -434,12 +449,12 @@ namespace ShaiTu {
             menu.Items.Add(Item("打开缓存文件夹", delegate { Process.Start("explorer.exe", "\"" + store.Cache + "\""); }));
             menu.Items.Add(Item("使用说明", delegate {
                 line.Busy = true;
-                try { MessageBox.Show("使用 Snipaste 原快捷键截图，选择钉在桌面后才上晾衣绳。\n直接复制不上绳；编辑后钉图只接收最终版本。\n没有运行 Snipaste 时，托盘可使用 Windows 截图。\n系统截图需复制到剪贴板；Esc 取消，2 分钟后停止本次接收。\n\n左键复制，右键取字。\nShift + 右键打开更多操作，可另存需要保留的图片。\n拖到另一张图上交换位置，拖绳调整高度。\n\n有图片时右侧小把手始终显示：单击可展开或收起；隐藏时悬停 0.3 秒也可展开。\n鼠标留在挂绳区保持显示，离开 0.6 秒收起。\n钉图成功后展开确认，快捷键展开后保持显示。\n没有图片时，绳子和小把手都隐藏。\nSnipaste 桌面贴图可自由拖动对比。\n拖出绳外松手会取下并清理缓存，不会在桌面生成副本；清空或退出同样只清理晒图缓存。\nSnipaste 贴图及原文件由 Snipaste 管理。", "晒图使用说明"); }
+                try { MessageBox.Show("使用 Snipaste 原快捷键截图，选择钉在桌面后才上晾衣绳。\n直接复制不上绳；编辑后钉图只接收最终版本。\n没有运行 Snipaste 时，托盘可使用 Windows 截图。\n系统截图需复制到剪贴板；Esc 取消，2 分钟后停止本次接收。\n\n左键复制，右键取字。\nShift + 右键打开更多操作，可另存需要保留的图片。\n拖到另一张图上交换位置；按住图片拖动，可移到绳子任意位置；拖绳调整高度。\n\n有图片时右侧小把手始终显示：单击可展开或收起；隐藏时悬停 0.3 秒也可展开。\n鼠标留在挂绳区保持显示，离开 0.6 秒收起。\n钉图成功后展开确认，快捷键展开后保持显示。\n没有图片时，绳子和小把手都隐藏。\nSnipaste 桌面贴图可自由拖动对比。\n拖出绳外松手会取下并清理缓存，不会在桌面生成副本；清空或退出同样只清理晒图缓存。\nSnipaste 贴图及原文件由 Snipaste 管理。", "晒图使用说明"); }
                 finally { line.Busy = false; }
             }));
             menu.Items.Add(Item("关于晒图", delegate {
                 line.Busy = true;
-                MessageBox.Show("晒图 0.7.4\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
+                MessageBox.Show("晒图 0.7.5\n\n截图晾衣绳与本地取字\nApache License 2.0", "关于晒图");
                 line.Busy = false;
             }));
             menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add(Item("清理截图并退出", ExitFromTray));

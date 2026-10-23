@@ -27,6 +27,11 @@ namespace ShaiTu {
         [DataMember] public string SnipasteFolder = "";
         [DataMember] public string WatchFolder = "";
         [DataMember] public List<string> Files = new List<string>();
+        [DataMember] public List<PhotoPlacement> Placements = new List<PhotoPlacement>();
+    }
+    [DataContract] public sealed class PhotoPlacement {
+        [DataMember] public string File;
+        [DataMember] public double X;
     }
     public sealed class Photo {
         public string File;
@@ -47,6 +52,7 @@ namespace ShaiTu {
             Directory.CreateDirectory(Cache);
             Settings = ReadSettings(Path.Combine(Root, "settings.json")) ?? ReadSettings(Path.Combine(Root, "settings.json.bak")) ?? new Settings();
             if (Settings.Files == null) Settings.Files = new List<string>();
+            if (Settings.Placements == null) Settings.Placements = new List<PhotoPlacement>();
             if (!Settings.SnipasteConfigured) { Settings.SnipasteEnabled = true; Settings.SnipasteConfigured = true; }
             if (!Settings.HotkeyConfigured || !HotkeyBinding.IsValid(Settings.HotkeyModifiers, Settings.HotkeyKey)) {
                 Settings.HotkeyModifiers = 3; Settings.HotkeyKey = 84; Settings.HotkeyConfigured = true;
@@ -87,7 +93,7 @@ namespace ShaiTu {
                 HotkeyModifiers = Settings.HotkeyModifiers, HotkeyKey = Settings.HotkeyKey,
                 HeightOffset = Settings.HeightOffset, SnipasteEnabled = Settings.SnipasteEnabled, SnipasteConfigured = true,
                 SnipasteFolder = Settings.SnipasteFolder, WatchFolder = Settings.WatchFolder, StartupEnabled = Settings.StartupEnabled, StartupConfigured = true,
-                Files = Items.Select(p => Path.GetFileName(p.File)).ToList() };
+                Files = Items.Select(p => Path.GetFileName(p.File)).ToList(), Placements = Settings.Placements ?? new List<PhotoPlacement>() };
             string path = Path.Combine(Root, "settings.json"), tmp = path + ".tmp";
             using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None)) {
                 new DataContractJsonSerializer(typeof(Settings)).WriteObject(fs, state); fs.Flush(true);
@@ -119,7 +125,11 @@ namespace ShaiTu {
                 File.WriteAllBytes(path, bytes);
                 Photo photo = LoadPhoto(path); photo.Hash = hash;
                 Items.Insert(0, photo);
-                while (Items.Count > Capacity) Items.RemoveAt(Items.Count - 1);
+                while (Items.Count > Capacity) {
+                    Photo removed = Items[Items.Count - 1];
+                    Items.RemoveAt(Items.Count - 1);
+                    ForgetPlacement(removed);
+                }
                 Save();
             } catch {
                 Items.Clear(); Items.AddRange(previous); TryDelete(path); throw;
@@ -154,8 +164,30 @@ namespace ShaiTu {
         public void Remove(Photo p) {
             int index = Items.IndexOf(p); if (index < 0) return;
             Items.RemoveAt(index);
+            ForgetPlacement(p);
             try { Save(); } catch { Items.Insert(index, p); throw; }
             TryDelete(p.File); RaiseChanged();
+        }
+        public double? PlacementFor(Photo photo) {
+            if (photo == null || Settings.Placements == null) return null;
+            string name = Path.GetFileName(photo.File);
+            PhotoPlacement placement = Settings.Placements.FirstOrDefault(x => x != null && String.Equals(x.File, name, StringComparison.OrdinalIgnoreCase));
+            return placement == null ? (double?)null : placement.X;
+        }
+        public void SetPlacement(Photo photo, double x) {
+            if (photo == null) return;
+            if (Settings.Placements == null) Settings.Placements = new List<PhotoPlacement>();
+            string name = Path.GetFileName(photo.File);
+            PhotoPlacement placement = Settings.Placements.FirstOrDefault(p => p != null && String.Equals(p.File, name, StringComparison.OrdinalIgnoreCase));
+            if (placement == null) { placement = new PhotoPlacement { File = name }; Settings.Placements.Add(placement); }
+            double old = placement.X;
+            placement.X = Math.Max(0, Math.Min(1, x));
+            try { Save(); } catch { placement.X = old; throw; }
+        }
+        void ForgetPlacement(Photo photo) {
+            if (photo == null || Settings.Placements == null) return;
+            string name = Path.GetFileName(photo.File);
+            Settings.Placements.RemoveAll(p => p != null && String.Equals(p.File, name, StringComparison.OrdinalIgnoreCase));
         }
         public bool Swap(Photo source, Photo target) {
             int a = Items.IndexOf(source), b = Items.IndexOf(target);
@@ -166,11 +198,13 @@ namespace ShaiTu {
         }
         public void Clear() {
             Photo[] previous = Items.ToArray(); Items.Clear();
+            if (Settings.Placements != null) Settings.Placements.Clear();
             try { Save(); } catch { Items.AddRange(previous); throw; }
             foreach (Photo p in previous) TryDelete(p.File); RaiseChanged();
         }
         public void ClearForExit() {
             Photo[] previous = Items.ToArray(); Items.Clear();
+            if (Settings.Placements != null) Settings.Placements.Clear();
             try { Save(); } catch { Items.AddRange(previous); throw; }
             // Replace the backup too, so fallback settings cannot restore an old capture list.
             Save();

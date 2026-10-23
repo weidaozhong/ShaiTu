@@ -15,6 +15,7 @@ namespace ShaiTu {
         readonly TextBlock icon;
         bool blocked;
         bool hoverEnabled = true;
+        bool lastLineVisible = true;
         readonly Func<System.Drawing.Point> cursor;
         public IntPtr Handle;
         public event Action<Forms.Screen> OpenRequested;
@@ -31,6 +32,7 @@ namespace ShaiTu {
                 Child = icon, ToolTip = "展开晾衣绳（悬停 0.3 秒）" };
             Content = Grip; Opacity = .72;
             MouseEnter += delegate { Fade(1); if (!blocked && hoverEnabled) dwell.Start(); };
+            MouseMove += delegate { Fade(1); if (!blocked && hoverEnabled && !dwell.IsEnabled) dwell.Start(); };
             MouseLeave += delegate { Fade(.72); blocked = false; dwell.Stop(); };
             Grip.PreviewMouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; Open(); };
             dwell.Tick += delegate { dwell.Stop(); if (IsVisible && !blocked && hoverEnabled && Region().Contains(cursor())) Open(); };
@@ -54,10 +56,13 @@ namespace ShaiTu {
         // While the clothesline is open the handle stays visible as a one-click hide
         // button; in that mode hovering must not hide it by accident.
         public void SetLineVisible(bool lineVisible) {
+            bool changed = lineVisible != lastLineVisible;
+            lastLineVisible = lineVisible;
             hoverEnabled = !lineVisible;
             icon.Text = lineVisible ? "›" : "‹";
             Grip.ToolTip = lineVisible ? "收起晾衣绳" : "展开晾衣绳（悬停 0.3 秒）";
             if (lineVisible) dwell.Stop();
+            else if (changed) blocked = Region().Contains(cursor());
         }
         public System.Drawing.Rectangle Region() {
             Native.RECT r; return Handle != IntPtr.Zero && Native.GetWindowRect(Handle, out r)
